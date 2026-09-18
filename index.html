@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Returns Portal — Nation.LA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F5F6F8;--surface:#FFFFFF;--surface2:#F0F2F5;--border:#E2E6EC;--border2:#CDD3DC;
+  --text:#1A2030;--text2:#5A6478;--text3:#9BA5B4;
+  --accent:#2563EB;--accent-l:#EEF4FF;--accent-d:#1D4ED8;
+  --green:#16A34A;--green-l:#F0FDF4;--amber:#D97706;--amber-l:#FFFBEB;
+  --red:#DC2626;--red-l:#FEF2F2;--purple:#7C3AED;--purple-l:#F5F3FF;
+  --teal:#0891B2;--teal-l:#ECFEFF;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* ── LOGIN ── */
+#login-screen{
+  display:flex;align-items:center;justify-content:center;min-height:100vh;
+  background:linear-gradient(135deg,#EEF4FF 0%,#F5F6F8 50%,#F0FDF4 100%);
+}
+.login-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:2.5rem 2rem;width:100%;max-width:380px;box-shadow:var(--shadow-md);
+}
+.login-logo{display:flex;align-items:center;gap:11px;margin-bottom:2rem}
+.login-mark{
+  width:38px;height:38px;border-radius:10px;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:13px;font-weight:500;color:#fff;
+}
+.login-title{font-size:17px;font-weight:600;color:var(--text)}
+.login-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input{
+  padding:9px 12px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:var(--sans);font-size:13px;transition:border-color .15s;
+}
+.field input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.login-err{font-size:12px;color:var(--red);margin-bottom:10px;display:none;padding:8px 10px;background:var(--red-l);border-radius:6px}
+.btn-login{
+  width:100%;padding:10px;border-radius:8px;border:none;background:var(--accent);
+  color:#fff;font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;transition:background .15s;
+}
+.btn-login:hover{background:var(--accent-d)}
+.btn-login:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── APP ── */
+#app{display:none;flex-direction:column;min-height:100vh}
+
+/* ── HEADER ── */
+header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 1.75rem;height:56px;display:flex;align-items:center;
+  justify-content:space-between;gap:1rem;flex-shrink:0;
+  box-shadow:0 1px 0 var(--border);position:sticky;top:0;z-index:50;
+}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.hdr-mark{
+  width:30px;height:30px;border-radius:8px;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;font-weight:500;color:#fff;
+}
+.hdr-title{font-size:14px;font-weight:600;color:var(--text)}
+.hdr-sub{font-size:11px;color:var(--text2)}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.eod-pill{
+  display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;
+  border:1px solid #FDE68A;background:var(--amber-l);
+  font-size:11px;font-family:var(--mono);color:var(--amber);white-space:nowrap;
+}
+.eod-pill.done{border-color:#BBF7D0;background:var(--green-l);color:var(--green)}
+.eod-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.user-pill{
+  display:flex;align-items:center;gap:6px;padding:4px 10px;
+  border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--text2);
+}
+.role-tag{
+  font-size:10px;font-weight:500;padding:1px 6px;border-radius:4px;
+  background:var(--accent-l);color:var(--accent);font-family:var(--mono);
+}
+.btn{
+  font-family:var(--sans);font-size:12px;font-weight:500;padding:6px 13px;
+  border-radius:7px;cursor:pointer;border:1px solid var(--border);
+  background:var(--surface);color:var(--text2);transition:all .15s;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:5px;box-shadow:var(--shadow);
+}
+.btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-l)}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 6px rgba(37,99,235,.25)}
+.btn-accent:hover{background:var(--accent-d);border-color:var(--accent-d);color:#fff}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-danger{border-color:#FCA5A5;color:var(--red)}
+.btn-danger:hover{background:var(--red-l);border-color:var(--red)}
+
+/* ── METRICS ── */
+.metrics{
+  display:grid;grid-template-columns:repeat(5,1fr);
+  background:var(--surface);border-bottom:1px solid var(--border);
+}
+.metric{padding:16px 22px;border-right:1px solid var(--border);cursor:pointer;transition:background 0.15s}.metric:hover{background:var(--surface2)}.metric.active{background:var(--accent-l);border-bottom:2px solid var(--accent)}
+.metric:last-child{border-right:none}
+.metric-val{font-size:28px;font-weight:300;font-family:var(--mono);line-height:1;margin-bottom:3px}
+.metric-lbl{font-size:11px;color:var(--text2);font-weight:500}
+.metric-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.c-blue{color:var(--accent)}.c-purple{color:var(--purple)}.c-amber{color:var(--amber)}.c-green{color:var(--green)}.c-teal{color:var(--teal)}
+
+/* ── MAIN ── */
+main{padding:1.5rem 1.75rem;display:flex;flex-direction:column;gap:1.25rem}
+
+/* ── COLLAPSIBLE PANEL ── */
+.panel{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;
+}
+.panel-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:12px 1.25rem;background:none;border:none;cursor:pointer;
+  font-family:var(--sans);text-align:left;
+}
+.panel-toggle:hover{background:var(--surface2)}
+.panel-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px}
+.admin-tag{font-size:10px;font-weight:500;padding:1px 6px;border-radius:4px;background:var(--amber-l);color:var(--amber);border:1px solid #FDE68A;font-family:var(--mono)}
+.panel-chevron{font-size:14px;color:var(--text3);transition:transform .2s;display:inline-block}
+.panel-chevron.open{transform:rotate(180deg)}
+.panel-body{padding:0 1.25rem 1.25rem;display:none}
+.panel-body.open{display:block}
+.panel-actions{display:flex;justify-content:flex-end;margin-bottom:12px}
+.contacts{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.chip{
+  display:flex;align-items:center;gap:7px;padding:5px 11px 5px 6px;
+  border-radius:20px;border:1px solid var(--border);background:var(--surface2);font-size:12px;box-shadow:var(--shadow);
+}
+.av{width:22px;height:22px;border-radius:50%;background:var(--accent-l);color:var(--accent);font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chip-name{color:var(--text);font-weight:500}.chip-role{color:var(--text3);font-size:10px;font-family:var(--mono)}
+.invite-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.invite-row input,.invite-row select{padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--sans);font-size:12px}
+.invite-row input{flex:1;min-width:160px}
+.invite-row input:focus,.invite-row select:focus{outline:none;border-color:var(--accent)}
+.notif-log-title{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:500;color:var(--text3);margin-bottom:8px}
+.log-item{display:flex;gap:8px;font-size:12px;color:var(--text2);margin-bottom:6px;align-items:flex-start}
+.log-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:4px}
+.log-dot.p{background:var(--amber)}
+
+/* ── CONTROLS ── */
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:180px}
+.search-wrap input{
+  width:100%;padding:8px 10px 8px 32px;background:var(--surface);border:1px solid var(--border);
+  border-radius:7px;color:var(--text);font-family:var(--sans);font-size:12px;box-shadow:var(--shadow);
+}
+.search-wrap input:focus{outline:none;border-color:var(--accent)}
+.search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
+.controls select{padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text2);font-family:var(--sans);font-size:12px;cursor:pointer;box-shadow:var(--shadow)}
+.controls select:focus{outline:none;border-color:var(--accent)}
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+thead{background:var(--surface2)}
+th{padding:10px 13px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 13px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.mc{font-family:var(--mono);font-size:11px;color:var(--text2)}
+.empty td{text-align:center;color:var(--text3);padding:3rem;font-size:13px}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:5px;white-space:nowrap}
+.b-open    {background:var(--accent-l);color:var(--accent);border:1px solid #BFDBFE}
+.b-notified{background:var(--purple-l);color:var(--purple);border:1px solid #DDD6FE}
+.b-flagged {background:var(--amber-l);color:var(--amber);border:1px solid #FDE68A}
+.b-damaged {background:var(--red-l);color:var(--red);border:1px solid #FCA5A5}
+.b-extra   {background:var(--teal-l);color:var(--teal);border:1px solid #A5F3FC}
+.b-missing {background:var(--amber-l);color:var(--amber);border:1px solid #FDE68A}
+.b-wrong   {background:var(--purple-l);color:var(--purple);border:1px solid #DDD6FE}
+.b-943     {background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;font-size:10px}
+
+/* ── DRAWER ── */
+.drawer{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow-md)}
+.drawer-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.1rem}
+.drawer-title-wrap{display:flex;flex-direction:column;gap:3px}
+.drawer-title{font-size:14px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.drawer-sub{font-size:12px;color:var(--text2)}
+.drawer-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:0 4px;line-height:1;border-radius:4px}
+.drawer-x:hover{background:var(--surface2);color:var(--text)}
+.dg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 20px;margin-bottom:1.1rem}
+.df{display:flex;flex-direction:column;gap:3px}
+.dl{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.dv{font-size:12px;font-family:var(--mono);color:var(--text)}
+.divider{height:1px;background:var(--border);margin:1rem 0}
+.section-hdr{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.lt{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem}
+.lt th{padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);background:var(--surface2)}
+.lt td{padding:8px 10px;font-family:var(--mono);font-size:11px;color:var(--text2);border-bottom:1px solid var(--border)}
+.lt tr:last-child td{border-bottom:none}
+.disc-form{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem}.disc-form-body{display:none}.disc-form-body.open{display:block}.disc-form-title{cursor:pointer;user-select:none}
+.disc-form-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field label{font-size:11px;font-weight:500;color:var(--text2)}
+.form-field input,.form-field select,.form-field textarea{padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:12px}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{outline:none;border-color:var(--accent)}
+.form-field textarea{resize:vertical;min-height:56px}
+.checkbox-row{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);cursor:pointer;margin-top:4px}
+.checkbox-row input{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
+.extra-fields{display:none}
+.extra-fields.visible{display:contents}
+.drawer-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── SIDE PANEL ── */
+.content-wrap{display:flex;gap:0;transition:all .2s ease;min-height:0}
+.table-side{flex:1;min-width:0;overflow:hidden;transition:all .2s ease}
+.side-panel{width:0;flex-shrink:0;overflow:hidden;transition:width .25s ease;border-left:0 solid var(--border);background:var(--surface);position:sticky;top:56px;align-self:flex-start;max-height:calc(100vh - 56px)}
+.side-panel.open{width:620px;border-left:1px solid var(--border)}
+.sp-hdr{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
+.sp-title{font-size:13px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.sp-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.sp-x{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 2px;border-radius:4px;line-height:1}
+.sp-x:hover{background:var(--surface2);color:var(--text)}
+.sp-section{padding:12px 16px;border-bottom:1px solid var(--border)}
+.sp-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.sp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.sp-field{display:flex;flex-direction:column;gap:2px}
+.sp-field .dl{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.sp-field .dv{font-size:12px;font-family:var(--mono);color:var(--text)}
+.sp-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.sp-tbl th{padding:5px 8px;text-align:left;font-size:10px;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);background:var(--surface2)}
+.sp-tbl td{padding:6px 8px;font-family:var(--mono);font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-tbl tr:last-child td{border-bottom:none}
+.sp-banner{padding:10px 16px;display:flex;gap:8px;align-items:flex-start;border-bottom:1px solid var(--border)}
+.sp-actions{padding:12px 16px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--surface)}
+.sp-body{overflow-y:auto;flex:1;height:calc(100vh - 56px)}
+.sp-disc-form{padding:12px 16px;border-bottom:1px solid var(--border)}
+.row-active{background:var(--accent-l)!important}
+
+/* ── LOADING — modern progress bar style ── */
+#loading{
+  position:fixed;inset:0;background:rgba(245,246,248,.95);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;z-index:100;
+}
+#loading.h{display:none}
+.load-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:2rem 2.5rem;display:flex;flex-direction:column;align-items:center;
+  gap:16px;min-width:300px;box-shadow:var(--shadow-md);
+}
+.load-icon{
+  width:44px;height:44px;border-radius:12px;background:var(--accent-l);
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+}
+.load-title{font-size:14px;font-weight:600;color:var(--text)}
+.load-sub{font-size:12px;color:var(--text2);font-family:var(--mono);text-align:center}
+.progress-track{width:100%;height:4px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.progress-bar{
+  height:100%;width:30%;background:linear-gradient(90deg,var(--accent),#60A5FA);
+  border-radius:4px;animation:progress 1.4s ease-in-out infinite;
+}
+@keyframes progress{
+  0%{width:5%;margin-left:0}
+  50%{width:40%;margin-left:30%}
+  100%{width:5%;margin-left:95%}
+}
+.load-steps{display:flex;flex-direction:column;gap:6px;width:100%}
+.load-step{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3)}
+.load-step.active{color:var(--text2)}
+.load-step.done{color:var(--green)}
+.step-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);flex-shrink:0}
+.load-step.active .step-dot{background:var(--accent)}
+.load-step.done .step-dot{background:var(--green)}
+
+/* ── TOAST ── */
+#toasts{position:fixed;bottom:1.5rem;right:1.5rem;display:flex;flex-direction:column;gap:7px;z-index:999}
+.toast{
+  padding:10px 16px;border-radius:8px;font-size:12px;font-weight:500;
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  box-shadow:var(--shadow-md);animation:tin .2s ease;max-width:320px;
+  display:flex;align-items:center;gap:8px;
+}
+.toast.ok  {border-left:3px solid var(--green)}
+.toast.warn{border-left:3px solid var(--amber)}
+.toast.err {border-left:3px solid var(--red)}
+@keyframes tin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+.err-banner{background:var(--red-l);border:1px solid #FCA5A5;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);display:none}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-mark">RP</div>
+      <div><div class="login-title">Returns Portal</div><div class="login-sub">Nation.LA · Garment Group</div></div>
+    </div>
+    <div class="field"><label>Email</label><input type="email" id="l-email" placeholder="you@company.com" autocomplete="email"></div>
+    <div class="field" id="pass-field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="login-err" id="l-err"></div>
+    <div class="login-ok" id="l-ok" style="display:none;font-size:12px;color:var(--green);margin-bottom:10px;padding:8px 10px;background:var(--green-l);border-radius:6px"></div>
+    <button class="btn-login" id="l-btn" onclick="doLogin()">Sign in</button>
+    <div style="display:flex;align-items:center;gap:8px;margin:12px 0">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--text3)">or</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+    <button class="btn-login" id="ml-btn" onclick="sendMagicLink()"
+      style="background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;gap:8px">
+      <span style="font-size:16px">✉</span> Send magic link
+    </button>
+    <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">
+      Magic link sends a one-click login to your email — no password needed
+    </p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="hdr-left">
+      <div class="hdr-mark">RP</div>
+      <div><div class="hdr-title">Returns Portal</div><div class="hdr-sub">Nation.LA · Garment Group</div></div>
+    </div>
+    <div class="hdr-right">
+      <div class="eod-pill" id="eod-pill"><span class="eod-dot"></span><span id="eod-lbl">Processing in progress</span></div>
+      <div class="user-pill"><span id="user-email"></span><span class="role-tag" id="user-role-tag"></span></div>
+      <span id="m-sync" style="font-size:11px;color:var(--text3);white-space:nowrap">Last synced: —</span>
+      <button class="btn" onclick="refresh()">↻ Refresh</button>
+
+      <button class="btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="metrics">
+    <div class="metric" id="mc-all" onclick="metricFilter('all')"><div class="metric-val c-blue" id="m-total">—</div><div class="metric-lbl">Total receipts</div><div class="metric-sub">Open + flagged closed</div></div>
+    <div class="metric" id="mc-missing" onclick="metricFilter('missing')"><div class="metric-val" style="color:#D97706" id="m-missing">—</div><div class="metric-lbl">Missing</div><div class="metric-sub">On RMA, not received</div></div>
+    <div class="metric" id="mc-damaged" onclick="metricFilter('damaged')"><div class="metric-val" style="color:#EA580C" id="m-damaged">—</div><div class="metric-lbl">Damaged</div><div class="metric-sub">Received damaged</div></div>
+    <div class="metric" id="mc-notrma" onclick="metricFilter('notrma')"><div class="metric-val" style="color:#DC2626" id="m-notrma">—</div><div class="metric-lbl">Not on RMA</div><div class="metric-sub">Received, not expected</div></div>
+    <div class="metric" id="mc-943" onclick="metricFilter('943')"><div class="metric-val c-teal" id="m-943">—</div><div class="metric-lbl">943 requested</div><div class="metric-sub">Pending reissue</div></div>
+  </div>
+
+  <main>
+    <div class="err-banner" id="err-banner"></div>
+
+    <!-- Admin only collapsible panel -->
+    <div class="panel" id="admin-panel" style="display:none">
+      <button class="panel-toggle" onclick="togglePanel()">
+        <span class="panel-title">Client access &amp; notifications <span class="admin-tag">Admin only</span></span>
+        <span class="panel-chevron" id="panel-chevron">▾</span>
+      </button>
+      <div class="panel-body" id="panel-body">
+        <div class="panel-actions">
+          <button class="btn btn-sm" onclick="sendEOD()">Send EOD summary</button>
+        </div>
+        <div class="contacts" id="contact-list"></div>
+        <div class="invite-row">
+          <input type="email" id="inv-email" placeholder="client@email.com">
+          <select id="inv-role"><option value="client">Client (read-only)</option><option value="admin">Admin (full access)</option></select>
+          <button class="btn btn-sm btn-accent" onclick="inviteUser()">✉ Send invite</button>
+        </div>
+        <div id="invite-msg" style="font-size:12px;margin-top:8px;display:none"></div>
+        <div class="notif-log-title">Notification log</div>
+        <div id="log-body"><div class="log-item"><span class="log-dot p"></span><span>Connecting…</span></div></div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="search-wrap">
+        <span class="search-ico">⌕</span>
+        <input type="text" id="f-q" placeholder="Search reference, PO, RA#, SKU, tracking…" oninput="render()" onkeydown="if(event.key==='Enter')searchClosed()">
+      </div>
+      <button class="btn" id="btn-search-ext" onclick="searchClosed()" title="Look up any order in Extensiv — including closed/archived returns. One on-demand lookup; does not affect the normal dashboard load.">⌕ Search Extensiv (incl. closed)</button>
+      <select id="f-disc" onchange="render()">
+        <option value="">All types</option>
+        <option value="none">No discrepancy</option>
+        <option value="Damaged">Damaged</option>
+        <option value="Extra item">Extra item</option>
+        <option value="Missing item">Missing item</option>
+        <option value="Wrong item">Wrong item</option>
+      </select>
+      <select id="f-status" onchange="render()">
+        <option value="">All statuses</option>
+        <option value="Open">Open</option>
+        <option value="Flagged">Flagged</option>
+        <option value="Notified">Notified</option>
+      </select>
+      <select id="f-943" onchange="render()">
+        <option value="">All</option>
+        <option value="1">943 requested</option>
+      </select>
+      <button class="btn" onclick="exportCSV()">↓ Export CSV</button>
+    </div>
+
+    <!-- Table — Status & View first, Txn# last -->
+    <!-- Content: table + side panel -->
+    <div class="content-wrap">
+      <div class="table-side">
+      <div class="tbl-wrap">
+      <table>
+        <thead id="tbl-head"><tr>
+          <th style="width:90px;cursor:pointer" onclick="sortBy('dash_status')">Status</th>
+          <th style="width:55px">View</th>
+          <th style="width:120px">Discrepancy</th>
+          <th style="width:145px;cursor:pointer" onclick="sortBy('referenceNum')">Reference #</th>
+          <th style="width:100px;cursor:pointer" onclick="sortBy('poNum')">PO #</th>
+          <th style="width:110px;cursor:pointer" onclick="sortBy('receiptAdviceNum')">Receipt Advice #</th>
+          <th style="width:90px;cursor:pointer" onclick="sortBy('arrivalDate')">Receipt Date</th>
+          <th>SKUs</th>
+          <th style="width:70px;cursor:pointer" onclick="sortBy('transactionNum')">Txn #</th>
+          <th style="width:150px">GG Notes</th>
+          <th style="width:150px">Emily Notes</th>
+          <th style="width:130px">Action To Take</th>
+          <th style="width:110px">New RMA #</th>
+          <th style="width:130px">Yane Notes</th>
+        </tr></thead>
+        <tbody id="tbl"></tbody>
+      </table>
+    </div>
+    </div><!-- end table-side -->
+    <!-- Side Panel -->
+    <div class="side-panel" id="side-panel">
+      <div class="sp-body" id="sp-body"></div>
+    </div>
+    </div><!-- end content-wrap -->
+  </main>
+</div>
+
+<!-- Loading — modern card style -->
+<div id="loading">
+  <div class="load-card">
+    <div class="load-icon">📦</div>
+    <div class="load-title">Returns Portal</div>
+    <div class="progress-track"><div class="progress-bar"></div></div>
+    <div class="load-sub" id="load-txt">Connecting…</div>
+    <div class="load-steps">
+      <div class="load-step" id="ls-auth"><span class="step-dot"></span>Authenticating</div>
+      <div class="load-step" id="ls-fetch"><span class="step-dot"></span>Fetching open receipts from Extensiv</div>
+      <div class="load-step" id="ls-flags"><span class="step-dot"></span>Loading flags &amp; notes</div>
+      <div class="load-step" id="ls-ready"><span class="step-dot"></span>Building dashboard</div>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const SUPA_URL  = 'https://wyuqoceqdcuvzvkcyvvw.supabase.co'
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5dXFvY2VxZGN1dnp2a2N5dnZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzI1NDMsImV4cCI6MjA5NjM0ODU0M30.Y3vH72cGaVzfxzieEACsi3GL-kIgRnwyQpjftP0R5uY'
+const FUNC_URL  = `${SUPA_URL}/functions/v1/extensiv-proxy`
+// ─────────────────────────────────────────────────────────────────────────────
+
+const { createClient } = supabase
+const sb = createClient(SUPA_URL, SUPA_ANON)
+
+const POLL = 2 * 60 * 1000
+let records     = []
+let flags       = {}
+let notesGG     = {}   // GG-side: gg_notes, yane_notes, action_to_take
+let notesCl     = {}   // Client-side: emily_notes, new_rma_num
+let contacts    = []
+let activeIdx   = null
+let pollTimer   = null
+let currentUser = null
+let isAdmin     = false
+let panelOpen   = false
+
+// ─── LOADING STEPS ────────────────────────────────────────────────────────────
+function stepDone(id)   { const el = document.getElementById(id); if(el){el.classList.remove('active');el.classList.add('done');el.querySelector('.step-dot').textContent='✓'} }
+function stepActive(id) { const el = document.getElementById(id); if(el){el.classList.add('active')} }
+function setLoadTxt(t)  { const el = document.getElementById('load-txt'); if(el) el.textContent = t }
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim()
+  const pass  = document.getElementById('l-pass').value
+  const btn   = document.getElementById('l-btn')
+  const err   = document.getElementById('l-err')
+  err.style.display = 'none'
+  btn.disabled = true; btn.textContent = 'Signing in…'
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass })
+  btn.disabled = false; btn.textContent = 'Sign in'
+  if (error) { err.textContent = error.message; err.style.display = 'block'; return }
+  await bootApp(data.user)
+}
+
+async function doLogout() { await sb.auth.signOut(); location.reload() }
+
+async function sendMagicLink() {
+  const email = document.getElementById('l-email').value.trim()
+  const err   = document.getElementById('l-err')
+  const ok    = document.getElementById('l-ok')
+  const btn   = document.getElementById('ml-btn')
+  err.style.display = 'none'
+  ok.style.display  = 'none'
+
+  if (!email || !email.includes('@')) {
+    err.textContent   = 'Please enter your email address first.'
+    err.style.display = 'block'
+    return
+  }
+
+  btn.disabled    = true
+  btn.textContent = 'Sending…'
+
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: window.location.origin,
+      shouldCreateUser: false  // only existing users can log in
+    }
+  })
+
+  btn.disabled    = false
+  btn.innerHTML   = '<span style="font-size:16px">✉</span> Send magic link'
+
+  if (error) {
+    err.textContent   = error.message
+    err.style.display = 'block'
+    return
+  }
+
+  ok.textContent  = `Magic link sent to ${email} — check your inbox and click the link to sign in.`
+  ok.style.display = 'block'
+  // Hide password field since they're using magic link
+  document.getElementById('pass-field').style.display = 'none'
+}
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user && !currentUser) await bootApp(session.user)
+})
+
+async function bootApp(user) {
+  currentUser = user
+  // Auto-assign role by email domain — no manual setup needed
+  isAdmin = user.email.endsWith('@thegarmentgroup.com')
+
+  // Show app immediately — no loading overlay
+  document.getElementById('login-screen').style.display = 'none'
+  document.getElementById('app').style.display = 'flex'
+  document.getElementById('user-email').textContent    = user.email
+  document.getElementById('user-role-tag').textContent = isAdmin ? 'Admin' : 'Viewer'
+  if (isAdmin) {
+    const adminPanel = document.getElementById('admin-panel')
+    const notifyBtn  = document.getElementById('btn-notify-all')
+    if (adminPanel) adminPanel.style.display = 'block'
+    if (notifyBtn)  notifyBtn.style.display  = 'inline-flex'
+  }
+  hideLoad()  // hide loading overlay immediately
+
+  // Load everything in background — non-blocking
+  checkEOD()
+
+  // Load flags and receipts in parallel
+  loadFlags().catch(e => console.warn('flags:', e))
+  loadNotes().catch(e => console.warn('notes:', e))
+  loadContacts().catch(e => console.warn('contacts:', e))
+  await loadReceivers()
+  startPoll()
+}
+
+// ─── PANEL TOGGLE ─────────────────────────────────────────────────────────────
+function togglePanel() {
+  panelOpen = !panelOpen
+  document.getElementById('panel-body').classList.toggle('open', panelOpen)
+  document.getElementById('panel-chevron').classList.toggle('open', panelOpen)
+}
+
+// ─── SUPABASE ─────────────────────────────────────────────────────────────────
+async function loadFlags() {
+  try {
+    const { data, error } = await sb.from('receipts_flags').select('*')
+    if (error) { console.warn('loadFlags error:', error.message); return }
+    flags = {}
+    ;(data ?? []).forEach(f => { flags[f.receiver_id] = f })
+    // Recalculate metrics after flags load
+    if (allRecords.length) { updateMetrics(); render() }
+  } catch(e) {
+    console.warn('loadFlags exception:', e.message)
+  }
+}
+
+// --- Collaboration notes ----------------------------------------------------
+async function loadNotes() {
+  try {
+    const { data, error } = await sb.from('receipt_notes_gg').select('*')
+    if (error) console.warn('loadNotes gg:', error.message)
+    else { notesGG = {}; (data ?? []).forEach(n => { notesGG[n.receiver_id] = n }) }
+  } catch(e) { console.warn('loadNotes gg exception:', e.message) }
+  try {
+    const { data, error } = await sb.from('receipt_notes_client').select('*')
+    if (error) console.warn('loadNotes client:', error.message)
+    else { notesCl = {}; (data ?? []).forEach(n => { notesCl[n.receiver_id] = n }) }
+  } catch(e) { console.warn('loadNotes client exception:', e.message) }
+  if (allRecords.length) render()
+}
+
+function getNoteGG(r) { return notesGG[r.receiverId] ?? {} }
+function getNoteCl(r) { return notesCl[r.receiverId] ?? {} }
+
+// Truncated cell for the table — full text lives in the panel
+function noteCell(txt) {
+  if (!txt) return '<span style="color:var(--text3);font-size:11px">—</span>'
+  const short = txt.length > 38 ? txt.slice(0, 38) + '…' : txt
+  return `<span style="font-size:11px" title="${esc(txt)}">${esc(short)}</span>`
+}
+
+async function saveNotes(idx) {
+  const r = allRecords[idx] ?? records[idx]
+  const stamp = { updated_at: new Date().toISOString(), updated_by: currentUser?.email ?? '' }
+  try {
+    if (isAdmin) {
+      const patch = {
+        receiver_id: r.receiverId, reference_num: r.referenceNum,
+        gg_notes:       document.getElementById('n-gg')?.value ?? '',
+        yane_notes:     document.getElementById('n-yane')?.value ?? '',
+        action_to_take: document.getElementById('n-action')?.value ?? '',
+        ...stamp }
+      const { data, error } = await sb.from('receipt_notes_gg')
+        .upsert(patch, { onConflict: 'receiver_id' }).select().single()
+      if (error) { toast('Could not save: ' + error.message, 'warn'); return }
+      if (data) notesGG[r.receiverId] = data
+    } else {
+      const patch = {
+        receiver_id: r.receiverId, reference_num: r.referenceNum,
+        emily_notes: document.getElementById('n-emily')?.value ?? '',
+        new_rma_num: document.getElementById('n-rma')?.value ?? '',
+        ...stamp }
+      const { data, error } = await sb.from('receipt_notes_client')
+        .upsert(patch, { onConflict: 'receiver_id' }).select().single()
+      if (error) { toast('Could not save: ' + error.message, 'warn'); return }
+      if (data) notesCl[r.receiverId] = data
+    }
+    toast('Notes saved')
+    render()
+  } catch(e) { toast('Could not save notes', 'warn') }
+}
+// ---------------------------------------------------------------------------
+
+async function upsertFlag(receiverId, referenceNum, poNum, patch) {
+  const ex = flags[receiverId]
+  if (ex) {
+    const { data } = await sb.from('receipts_flags').update(patch).eq('id', ex.id).select().single()
+    if (data) flags[receiverId] = { ...ex, ...data }
+  } else {
+    const { data } = await sb.from('receipts_flags')
+      .insert({ receiver_id: receiverId, reference_num: referenceNum, po_num: poNum, ...patch })
+      .select().single()
+    if (data) flags[receiverId] = data
+  }
+
+  // If a discrepancy type is being set, snapshot receipt into flagged_receipts
+  // This ensures the record stays visible even after being closed in Extensiv
+  if (patch.discrepancy_type) {
+    const r = allRecords.find(rec => rec.receiverId === receiverId)
+    if (r) {
+      await sb.from('flagged_receipts').upsert({
+        receiver_id:        receiverId,
+        reference_num:      r.referenceNum,
+        po_num:             r.poNum,
+        receipt_advice_num: r.receiptAdviceNum,
+        arrival_date:       r.arrivalDate,
+        customer:           r.customer,
+        tracking_num:       r.trackingNum,
+        on_hold:            r.onHold,
+        skus:               r.skus,
+      }, { onConflict: 'receiver_id' })
+    }
+  }
+
+  // If flag is being cleared/resolved, remove from flagged_receipts
+  if (patch.discrepancy_type === null) {
+    await sb.from('flagged_receipts').delete().eq('receiver_id', receiverId)
+  }
+}
+
+async function loadContacts() {
+  if (!isAdmin) return
+  try {
+    const { data, error } = await sb.from('contacts').select('*').order('created_at')
+    if (error) { console.warn('loadContacts error:', error.message); return }
+    contacts = data ?? []
+    renderContacts()
+  } catch(e) {
+    console.warn('loadContacts exception:', e.message)
+  }
+}
+
+async function inviteUser() {
+  const email   = document.getElementById('inv-email').value.trim()
+  const role    = document.getElementById('inv-role').value
+  const msgEl   = document.getElementById('invite-msg')
+  const roleLabel = role === 'admin' ? 'Admin' : 'Client'
+
+  if (!email || !email.includes('@')) {
+    msgEl.style.display = 'block'
+    msgEl.style.color   = 'var(--red)'
+    msgEl.textContent   = 'Please enter a valid email address.'
+    return
+  }
+
+  msgEl.style.display = 'block'
+  msgEl.style.color   = 'var(--text2)'
+  msgEl.textContent   = 'Sending invite…'
+
+  // Send invite via Supabase Admin API through edge function
+  const { data: { session } } = await sb.auth.getSession()
+
+  try {
+    // Use Supabase admin invite
+    const res = await fetch(`${SUPA_URL}/auth/v1/invite`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_ANON,
+        'Authorization': `Bearer ${session?.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        data: { role }  // sets user_metadata.role on signup
+      })
+    })
+
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.message || err.msg || 'Invite failed')
+    }
+
+    // Add to contacts list
+    const { data: contact } = await sb.from('contacts')
+      .upsert({ name: email.split('@')[0], email, role: roleLabel }, { onConflict: 'email' })
+      .select().single()
+
+    if (contact) {
+      contacts.push(contact)
+      renderContacts()
+    }
+
+    await logNotif(`Invite sent to ${email} (${roleLabel})`)
+    msgEl.style.color   = 'var(--green)'
+    msgEl.textContent   = `✓ Invite sent to ${email} — they'll get an email to set their password.`
+    document.getElementById('inv-email').value = ''
+    toast(`Invite sent to ${email}`)
+
+    setTimeout(() => { msgEl.style.display = 'none' }, 5000)
+
+  } catch(e) {
+    msgEl.style.color   = 'var(--red)'
+    msgEl.textContent   = `Error: ${e.message}`
+    console.error(e)
+  }
+}
+
+async function addContact() {
+  const email = document.getElementById('inv-email').value.trim()
+  const role  = document.getElementById('inv-role').value
+  if (!email || !email.includes('@')) { toast('Enter a valid email', 'warn'); return }
+  const { data, error } = await sb.from('contacts').insert({ name: email.split('@')[0], email, role }).select().single()
+  if (error) { toast('Could not add contact', 'err'); return }
+  contacts.push(data)
+  renderContacts()
+  await logNotif(`Access granted to ${email} (${role})`)
+  toast(`Contact added: ${email}`)
+  document.getElementById('inv-email').value = ''
+}
+
+function renderContacts() {
+  document.getElementById('contact-list').innerHTML = contacts.map(c => {
+    const ini = (c.name||c.email).slice(0,2).toUpperCase()
+    return `<div class="chip"><div class="av">${ini}</div><span class="chip-name">${c.name||c.email}</span><span class="chip-role">${c.role}</span></div>`
+  }).join('')
+}
+
+async function logNotif(msg) {
+  await sb.from('notification_log').insert({ message: msg, created_by: currentUser?.email })
+  prependLog(msg, false)
+}
+
+function prependLog(msg, pending) {
+  const t  = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+  const el = document.createElement('div')
+  el.className = 'log-item'
+  el.innerHTML = `<span class="log-dot${pending?' p':''}"></span><span><strong>${t}</strong> — ${msg}</span>`
+  document.getElementById('log-body').prepend(el)
+}
+
+// ─── EXTENSIV ─────────────────────────────────────────────────────────────────
+const PAGE_SIZE_DASH = 100
+let currentPage = 1
+let allRecords  = []
+let showAll     = false   // true when the "Total receipts" card is active — render every row, no page cap
+let sortCol     = 'arrivalDate'
+let sortDir     = 'desc'
+
+async function loadReceivers() {
+  try {
+    // Read directly from Supabase REST API — no edge function, no cold start
+    // Fetch open records + any flagged records (even if closed in Extensiv)
+    // Fetch open receipts from cache AND flagged closed receipts in parallel
+    const [cacheRes, flaggedRes] = await Promise.all([
+      fetch(`${SUPA_URL}/rest/v1/receivers_cache?select=*&order=arrival_date.desc`, {
+        headers: { 'apikey': SUPA_ANON, 'Authorization': `Bearer ${SUPA_ANON}` }
+      }),
+      fetch(`${SUPA_URL}/rest/v1/flagged_receipts?select=*&order=arrival_date.desc`, {
+        headers: { 'apikey': SUPA_ANON, 'Authorization': `Bearer ${SUPA_ANON}` }
+      })
+    ])
+    if (!cacheRes.ok) throw new Error(`Cache read failed: ${cacheRes.status}`)
+    const cached  = await cacheRes.json()
+    const flagged = flaggedRes.ok ? await flaggedRes.json() : []
+
+    const openRecords = (cached ?? []).map(r => ({
+      receiverId:        r.receiver_id,
+      transactionNum:    r.transaction_num,
+      referenceNum:      r.reference_num,
+      poNum:             r.po_num,
+      receiptAdviceNum:  r.receipt_advice_num,
+      arrivalDate:       r.arrival_date,
+      customer:          r.customer,
+      trackingNum:       r.tracking_num,
+      onHold:            r.on_hold,
+      totalQty:          r.total_qty,
+      lineCount:         r.line_count,
+      skus:              r.skus ?? [],
+      lines:             [],
+      _detailLoaded:     false,
+      _closedInExtensiv: false,
+    }))
+
+    const openIds = new Set(openRecords.map(r => r.receiverId))
+    const closedFlagged = (flagged ?? [])
+      .filter(r => !openIds.has(r.receiver_id))
+      .map(r => ({
+        receiverId:        r.receiver_id,
+        transactionNum:    r.receiver_id,
+        referenceNum:      r.reference_num,
+        poNum:             r.po_num,
+        receiptAdviceNum:  r.receipt_advice_num,
+        arrivalDate:       r.arrival_date,
+        customer:          r.customer,
+        trackingNum:       r.tracking_num,
+        onHold:            r.on_hold,
+        totalQty:          0,
+        lineCount:         0,
+        skus:              r.skus ?? [],
+        lines:             [],
+        _detailLoaded:     false,
+        _closedInExtensiv: true,
+      }))
+
+    allRecords = [...openRecords, ...closedFlagged]
+
+    records = allRecords.slice(0, PAGE_SIZE_DASH)
+    showErr('')
+
+    document.getElementById('m-sync').textContent =
+      `Last synced: ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`
+
+    updateMetrics(); render(); renderPagination()
+    hideLoad()
+
+    if (isAdmin) prependLog(`Loaded ${allRecords.length} open receipts`, false)
+
+  } catch(e) {
+    showErr(`Connection error: ${e.message}`)
+    console.error(e)
+    hideLoad()
+  }
+}
+
+async function bgRefresh(token) {
+  try {
+    const res  = await fetch(`${FUNC_URL}?refresh=1`, { headers: { 'Authorization': `Bearer ${token}` } })
+    const data = await res.json()
+    if (data.refreshed) {
+      const r2 = await fetch(FUNC_URL, { headers: { 'Authorization': `Bearer ${token}` } })
+      const { records: fresh } = await r2.json()
+      allRecords = fresh ?? []
+      const start = (currentPage - 1) * PAGE_SIZE_DASH
+      records = allRecords.slice(start, start + PAGE_SIZE_DASH)
+      document.getElementById('m-sync').textContent =
+        `Last synced: ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`
+      updateMetrics(); render(); renderPagination()
+    }
+  } catch(e) { console.warn('Background refresh:', e) }
+}
+
+function sortBy(col) {
+  if (sortCol === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortCol = col
+    sortDir = 'asc'
+  }
+  // Sort allRecords
+  allRecords.sort((a, b) => {
+    let av = a[col] ?? ''
+    let bv = b[col] ?? ''
+    if (col === 'arrivalDate') { av = new Date(av); bv = new Date(bv) }
+    if (col === 'totalQty' || col === 'lineCount' || col === 'transactionNum') { av = parseFloat(av)||0; bv = parseFloat(bv)||0 }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1
+    if (av > bv) return sortDir === 'asc' ? 1 : -1
+    return 0
+  })
+  currentPage = 1
+  records = allRecords.slice(0, PAGE_SIZE_DASH)
+  render(); renderPagination()
+}
+
+function sortIcon(col) {
+  if (sortCol !== col) return '<span style="color:var(--text3);font-size:10px">↕</span>'
+  return sortDir === 'asc'
+    ? '<span style="color:var(--accent);font-size:10px">↑</span>'
+    : '<span style="color:var(--accent);font-size:10px">↓</span>'
+}
+
+function goToPage(page) {
+  const totalPages = Math.ceil(allRecords.length / PAGE_SIZE_DASH)
+  if (page < 1 || page > totalPages) return
+  currentPage = page
+  const start = (page - 1) * PAGE_SIZE_DASH
+  records = allRecords.slice(start, start + PAGE_SIZE_DASH)
+  render(); renderPagination()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function renderPagination() {
+  const total      = allRecords.length
+  const totalPages = Math.ceil(total / PAGE_SIZE_DASH)
+  let el = document.getElementById('pagination')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = 'pagination'
+    el.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);font-size:12px;color:var(--text2)'
+    document.querySelector('.tbl-wrap').appendChild(el)
+  }
+  const isFiltering = document.getElementById('f-q').value || document.getElementById('f-disc').value || document.getElementById('f-status').value || document.getElementById('f-943').value
+  if (totalPages <= 1 || isFiltering || showAll) { el.style.display='none'; return }
+  el.style.display = 'flex'
+  const start = (currentPage-1)*PAGE_SIZE_DASH+1
+  const end   = Math.min(currentPage*PAGE_SIZE_DASH, total)
+  el.innerHTML = `
+    <span>Showing ${start}–${end} of ${total} receipts</span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn btn-sm" onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled style="opacity:.4"':''}>← Prev</button>
+      <span style="font-family:var(--mono);font-size:11px">Page ${currentPage} of ${totalPages}</span>
+      <button class="btn btn-sm" onclick="goToPage(${currentPage+1})" ${currentPage===totalPages?'disabled style="opacity:.4"':''}>Next →</button>
+    </div>`
+}
+
+function startPoll() {
+  if (pollTimer) clearInterval(pollTimer)
+  pollTimer = setInterval(async () => { await loadFlags(); await loadReceivers() }, POLL)
+}
+
+async function refresh() {
+  await loadFlags()
+  await loadReceivers()
+}
+
+// ─── CLOSED / ARCHIVED ORDER LOOKUP (search-gated, on-demand) ──────────────────
+// Fires ONLY on button click / Enter. One Extensiv query for the searched term,
+// no date/status filter (so it finds closed orders), no cache write. Zero impact
+// on the normal dashboard load.
+async function searchClosed() {
+  const term = document.getElementById('f-q').value.trim()
+  if (term.length < 3) { toast('Type at least 3 characters (RMA, reference, or PO) to search Extensiv', 'warn'); return }
+  const btn  = document.getElementById('btn-search-ext')
+  const orig = btn.innerHTML
+  btn.disabled = true; btn.innerHTML = 'Searching…'
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const res = await fetch(`${FUNC_URL}?search=${encodeURIComponent(term)}`, {
+      headers: { 'Authorization': `Bearer ${session?.access_token}` }
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const { results } = await res.json()
+    if (!results || !results.length) { toast(`No orders found in Extensiv for "${term}"`, 'warn'); return }
+    let added = 0
+    results.forEach(d => {
+      const existing = allRecords.find(r => r.receiverId === d.receiverId)
+      if (existing) {
+        Object.assign(existing, d, { _detailLoaded: true })   // already in cache (open) — just enrich it
+      } else {
+        allRecords.push({ ...d, _detailLoaded: true, _closedInExtensiv: true, _fromSearch: true })
+        added++
+      }
+    })
+    showAll = false
+    render()
+    toast(`Found ${results.length} order${results.length!==1?'s':''} for "${term}"${added?` · ${added} closed/archived`:''}`)
+  } catch(e) {
+    toast(`Extensiv search error: ${e.message}`, 'err')
+    console.error('searchClosed:', e)
+  } finally {
+    btn.disabled = false; btn.innerHTML = orig
+  }
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function getFlag(r)   { return flags[r.receiverId] ?? {} }
+function getStatus(r) { return getFlag(r).dash_status ?? 'Open' }
+function getDisc(r)   { return getFlag(r).discrepancy_type ?? null }
+function get943(r)    { return getFlag(r).request_943 ?? false }
+
+function filtered() {
+  const q   = document.getElementById('f-q').value.toLowerCase()
+  const disc= document.getElementById('f-disc').value
+  const st  = document.getElementById('f-status').value
+  const f943= document.getElementById('f-943').value
+
+  // Search and filter across ALL records, not just current page
+  const source = (showAll || q || disc || st || f943) ? allRecords : records
+
+  const result = source.filter(r => {
+    const d = getDisc(r), s = getStatus(r)
+    // Closed in Extensiv: keep out of the portal unless the user is searching for it.
+    if (r._closedInExtensiv && !q) return false
+    if (st === 'Flagged' && s !== 'Flagged') return false
+    if (st && st !== 'Flagged' && s !== st) return false
+    if (disc === '__any_disc__' && !getDisc(r)) return false
+    if (f943 === '1' && !get943(r)) return false
+    if (disc === 'none' && d) return false
+    if (disc === '__any_disc__' && !d) return false
+    if (disc && disc !== 'none' && disc !== '__any_disc__' && d !== disc) return false
+    if (q) {
+      const ng = getNoteGG(r), nc = getNoteCl(r)
+      const hay = `${r.referenceNum} ${r.poNum} ${r.receiptAdviceNum??''} ${r.trackingNum} ${(r.skus??[]).join(' ')} ${r.transactionNum} ${ng.gg_notes??''} ${ng.action_to_take??''} ${ng.yane_notes??''} ${nc.emily_notes??''} ${nc.new_rma_num??''}`.toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  })
+  return result
+}
+
+function discBadge(type) {
+  if (!type) return `<span style="color:var(--text3);font-size:11px">—</span>`
+  const map = {'Damaged':'b-damaged','Extra item':'b-extra','Missing item':'b-missing','Wrong item':'b-wrong'}
+  return `<span class="badge ${map[type]??'b-open'}">${type}</span>`
+}
+
+function statusBadge(s, closedInExtensiv=false) {
+  const map = {'Open':'b-open','Flagged':'b-flagged','Notified':'b-notified','Resolved':'b-ok'}
+  const badge = `<span class="badge ${map[s]??'b-open'}">${s}</span>`
+  if (closedInExtensiv) {
+    return badge + `<span class="badge" style="background:#F3F4F6;color:#6B7280;border:1px solid #D1D5DB;font-size:10px;margin-left:3px">Closed in WMS</span>`
+  }
+  return badge
+}
+
+function render() {
+  const q    = document.getElementById('f-q').value.toLowerCase()
+  const disc = document.getElementById('f-disc').value
+  const st   = document.getElementById('f-status').value
+  const f943 = document.getElementById('f-943').value
+  const isFiltering = q || disc || st || f943
+
+  const list  = filtered()
+  const tbody = document.getElementById('tbl')
+  updateMetrics()
+  // Update sort icons in headers
+  const cols = ['dash_status','referenceNum','poNum','receiptAdviceNum','arrivalDate','totalQty','lineCount','transactionNum']
+  document.querySelectorAll('#tbl-head th[onclick]').forEach(th => {
+    const col = th.getAttribute('onclick').match(/'([^']+)'/)?.[1]
+    if (!col) return
+    const icon = th.querySelector('.sort-icon')
+    if (icon) icon.innerHTML = sortCol===col ? (sortDir==='asc'?'↑':'↓') : '↕'
+    else {
+      const sp = document.createElement('span')
+      sp.className = 'sort-icon'
+      sp.style.cssText = `font-size:10px;margin-left:3px;color:${sortCol===col?'var(--accent)':'var(--text3)'}`
+      sp.innerHTML = sortCol===col ? (sortDir==='asc'?'↑':'↓') : '↕'
+      th.appendChild(sp)
+    }
+  })
+  if (!list.length) {
+    tbody.innerHTML = `<tr class="empty"><td colspan="14">${records.length?'No records match filters':'No open receipts'}</td></tr>`
+    return
+  }
+  tbody.innerHTML = list.map(r => {
+    const idx    = allRecords.indexOf(r) !== -1 ? allRecords.indexOf(r) : records.indexOf(r)
+    const d      = getDisc(r), s = getStatus(r)
+    const skuStr = (r.skus??[]).slice(0,2).join(', ') + ((r.skus?.length??0)>2?` +${r.skus.length-2}`:'')
+    const r3     = get943(r)
+    const ng     = getNoteGG(r), nc = getNoteCl(r)
+    return `<tr>
+      <td>${statusBadge(s, r._closedInExtensiv)}</td>
+      <td><button class="btn btn-sm" onclick="showDrawer(${idx})">View</button></td>
+      <td>${discBadge(d)}${r3?` <span class="badge b-943">943</span>`:''}</td>
+      <td class="mc">${r.referenceNum}</td>
+      <td class="mc">${r.poNum}</td>
+      <td class="mc">${r.receiptAdviceNum??'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${fmt(r.arrivalDate)}</td>
+      <td class="mc" style="font-size:10px">${skuStr}</td>
+      <td class="mc">${r.transactionNum}</td>
+      <td>${noteCell(ng.gg_notes)}</td>
+      <td>${noteCell(nc.emily_notes)}</td>
+      <td>${noteCell(ng.action_to_take)}</td>
+      <td class="mc">${nc.new_rma_num ? esc(nc.new_rma_num) : '<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+      <td>${noteCell(ng.yane_notes)}</td>
+    </tr>`
+  }).join('')
+}
+
+function updateMetrics() {
+  // Always use allRecords for totals — not just the current page
+  const src     = (allRecords.length ? allRecords : records).filter(r => !r._closedInExtensiv)
+  const missing = src.filter(r => getDisc(r) === 'Missing item').length
+  const damaged = src.filter(r => getDisc(r) === 'Damaged').length
+  const notrma  = src.filter(r => getDisc(r) === 'Extra item').length
+  const req943  = src.filter(r => get943(r)).length
+  document.getElementById('m-total').textContent   = src.length
+  document.getElementById('m-missing').textContent = missing
+  document.getElementById('m-damaged').textContent = damaged
+  document.getElementById('m-notrma').textContent  = notrma
+  document.getElementById('m-943').textContent     = req943
+}
+
+// ─── DRAWER ───────────────────────────────────────────────────────────────────
+async function showDrawer(idx) {
+  if (activeIdx === idx) { closeDrawer(); return }
+  activeIdx = idx
+  const r = allRecords[idx] ?? records[idx]
+  // Highlight active row
+  document.querySelectorAll('#tbl tr').forEach(tr => tr.classList.remove('row-active'))
+  const rows = document.querySelectorAll('#tbl tr')
+  const rowOffset = idx - (currentPage-1)*PAGE_SIZE_DASH
+  if (rows[rowOffset]) rows[rowOffset].classList.add('row-active')
+
+  // Open panel with skeleton
+  const panel = document.getElementById('side-panel')
+  const body  = document.getElementById('sp-body')
+  panel.classList.add('open')
+  body.innerHTML = `
+    <div class="sp-hdr">
+      <div><div class="sp-title">${r.referenceNum}</div><div class="sp-sub">${r.customer} · ${fmt(r.arrivalDate)}</div></div>
+      <button class="sp-x" onclick="closeDrawer()">×</button>
+    </div>
+    <div style="padding:2rem;text-align:center;color:var(--text3);font-size:12px">
+      <div class="progress-track" style="margin-bottom:8px"><div class="progress-bar"></div></div>
+      Loading receipt detail…
+    </div>`
+
+  // Lazy load detail if not already fetched
+  if (!r._detailLoaded) {
+    try {
+      const { data: { session } } = await sb.auth.getSession()
+      const res = await fetch(`${FUNC_URL}?id=${r.receiverId}`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+      })
+      const { detail } = await res.json()
+      if (detail) {
+        // Keep allRecords authoritative so rows past page 1 and Extensiv search results resolve correctly
+        const merged = { ...r, ...detail, _detailLoaded: true }
+        allRecords[idx] = merged
+        const ri = records.indexOf(r); if (ri > -1) records[ri] = merged
+      }
+    } catch(e) {
+      console.error('Detail fetch error:', e)
+    }
+  }
+
+  const updated = allRecords[idx] ?? records[idx]
+  const f = getFlag(updated), d = f.discrepancy_type ?? ''
+  const lineRows = (updated.lines??[]).map(l=>`
+    <tr>
+      <td>${l.sku}${l.onHold?` <span style="color:var(--amber)">⚠</span>`:''}</td>
+      <td>${l.qty}</td><td>${l.po}</td><td>${l.location}</td><td>${l.upc}</td>
+    </tr>`).join('')
+
+  const showExtra = d==='Extra item'||d==='Wrong item'||d==='Missing item'
+  const ru = updated  // use updated record with detail
+  const flagForm  = isAdmin ? `
+    <div class="divider"></div>
+    <div class="disc-form">
+      <div class="disc-form-title" onclick="toggleFlagForm()">
+        ⚑ Flag discrepancy${d?` — <span class="badge ${d==='Damaged'?'b-damaged':d==='Extra item'?'b-extra':d==='Missing item'?'b-missing':'b-wrong'}" style="font-size:11px">${d}</span>`:''}&nbsp;<span id="flag-toggle-arrow" style="font-size:10px;color:var(--text3)">${d?'▲':'▼'}</span>
+        ${!isAdmin?'':''}</div>
+      <div class="disc-form-body${d?' open':''}" id="flag-form-body">
+      <div class="form-row">
+        <div class="form-field">
+          <label>Discrepancy type</label>
+          <select id="d-type" onchange="onTypeChange(${idx})">
+            <option value="">— Select —</option>
+            <option ${d==='Damaged'?'selected':''}>Damaged</option>
+            <option ${d==='Extra item'?'selected':''}>Extra item</option>
+            <option ${d==='Missing item'?'selected':''}>Missing item</option>
+            <option ${d==='Wrong item'?'selected':''}>Wrong item</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="d-status">
+            <option ${(f.dash_status??'Open')==='Open'?'selected':''}>Open</option>
+            <option ${f.dash_status==='Flagged'?'selected':''}>Flagged</option>
+            <option ${f.dash_status==='Notified'?'selected':''}>Notified</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Items with issue</div>
+          <button type="button" class="btn btn-sm" onclick="addItemRow()">+ Add item</button>
+        </div>
+        <div id="item-rows">
+
+        </div>
+      </div>
+      <div class="form-field" style="margin-bottom:10px">
+        <label>Notes</label>
+        <textarea id="d-notes" placeholder="Describe the issue, disposition, any client comms…">${f.notes??''}</textarea>
+      </div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="d-943" ${f.request_943?'checked':''}>
+        Request new 943 from client for this receipt
+      </label>
+    </div>
+      </div>
+    </div>
+    <div class="drawer-actions">
+      <button class="btn btn-accent" onclick="saveAndNotify(${idx})">Save &amp; notify client</button>
+      <button class="btn" onclick="saveFlag(${idx})">Save flag</button>
+      <button class="btn btn-danger btn-sm" onclick="clearFlag(${idx})">Clear flag</button>
+      ${ru._closedInExtensiv ? `<button class="btn btn-sm" style="border-color:#6B7280;color:#6B7280" onclick="resolveAndRemove(${idx})">✓ Resolve &amp; remove</button>` : ''}
+    </div>` : ''
+
+  // Build discrepancy banner — one block per issue item (falls back to legacy single-item flags)
+  const discBannerHtml = (() => {
+    const savedItems = normItems(f)
+    let blocks = ''
+    if (savedItems.length) {
+      blocks = savedItems.map(it => renderIssueBlock(it, f.request_943)).join('')
+    } else if (d) {
+      blocks = renderIssueBlock({ condition: d, sku: f.extra_sku, upc: f.upc, expQty: f.expected_qty, rcvQty: f.received_qty, note: '' }, f.request_943)
+    }
+    if (!blocks) return ''
+    const notesStr = f.notes ? `<div style="padding:2px 16px 12px"><p style="font-size:12px;margin:0;font-style:italic;color:var(--text2);line-height:1.5">📝 ${esc(f.notes)}</p></div>` : ''
+    return blocks + notesStr
+  })()
+
+  // Collaboration notes — GG side editable by admins, client side editable by client only
+  const notesSectionHtml = (() => {
+    const ng = getNoteGG(ru), nc = getNoteCl(ru)
+    const ro = v => `<div style="font-size:12px;color:var(--text);white-space:pre-wrap;min-height:16px">${v ? esc(v) : '<span style="color:var(--text3)">—</span>'}</div>`
+    const ggBlock = isAdmin ? `
+      <div class="form-field" style="margin-bottom:8px"><label>GG Notes</label><textarea id="n-gg" rows="2" placeholder="Internal GG notes…">${esc(ng.gg_notes ?? '')}</textarea></div>
+      <div class="form-field" style="margin-bottom:8px"><label>Action To Take</label><input type="text" id="n-action" placeholder="e.g. Reissue 943 / Credit issued" value="${esc(ng.action_to_take ?? '')}"></div>
+      <div class="form-field" style="margin-bottom:8px"><label>Yane Notes</label><textarea id="n-yane" rows="2" placeholder="Yane's notes…">${esc(ng.yane_notes ?? '')}</textarea></div>` : `
+      <div class="form-field" style="margin-bottom:8px"><label>GG Notes</label>${ro(ng.gg_notes)}</div>
+      <div class="form-field" style="margin-bottom:8px"><label>Action To Take</label>${ro(ng.action_to_take)}</div>
+      <div class="form-field" style="margin-bottom:8px"><label>Yane Notes</label>${ro(ng.yane_notes)}</div>`
+    const clBlock = !isAdmin ? `
+      <div class="form-field" style="margin-bottom:8px"><label>Your notes (Emily)</label><textarea id="n-emily" rows="2" placeholder="Add your notes here…">${esc(nc.emily_notes ?? '')}</textarea></div>
+      <div class="form-field" style="margin-bottom:8px"><label>New RMA #</label><input type="text" id="n-rma" placeholder="e.g. 114062571" value="${esc(nc.new_rma_num ?? '')}"></div>` : `
+      <div class="form-field" style="margin-bottom:8px"><label>Emily Notes</label>${ro(nc.emily_notes)}</div>
+      <div class="form-field" style="margin-bottom:8px"><label>New RMA #</label>${ro(nc.new_rma_num)}</div>`
+    const who = isAdmin ? 'GG fields are yours to edit. Client fields are read-only.'
+                        : 'Your fields are editable. GG fields are read-only.'
+    const stamp = (n) => n.updated_at ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">Last updated ${fmt(n.updated_at)}${n.updated_by?` by ${esc(n.updated_by)}`:''}</div>` : ''
+    return `
+    <div class="sp-section">
+      <div class="sp-label">Notes &amp; actions</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">${who}</div>
+      ${ggBlock}
+      <div style="height:1px;background:var(--border);margin:10px 0"></div>
+      ${clBlock}
+      <button class="btn btn-accent btn-sm" onclick="saveNotes(${idx})">Save notes</button>
+      ${stamp(isAdmin ? ng : nc)}
+    </div>`
+  })()
+
+  // Build items received table with status per row — map each flagged SKU to its own condition
+  const bannerItems = normItems(f)
+  const skuCond = {}
+  if (bannerItems.length) bannerItems.forEach(it => { if (it.sku) skuCond[it.sku] = it.condition })
+  else if (f.extra_sku)   skuCond[f.extra_sku] = d
+  const itemTableRows = (ru.lines??[]).map(l => {
+    const cond    = skuCond[l.sku]
+    const rowBg   = cond ? (cond==='Missing item'?'background:#FFFBEB':cond==='Damaged'?'background:#FFF7ED':cond==='Wrong item'?'background:#F5F3FF':'background:#FEF2F2') : ''
+    const statusIcon = cond
+      ? (cond==='Extra item'?'<span style="color:#DC2626;font-size:11px">⊕ Not on RMA</span>'
+        :cond==='Missing item'?'<span style="color:#D97706;font-size:11px">⊖ Missing</span>'
+        :cond==='Damaged'?'<span style="color:#EA580C;font-size:11px">⚠ Damaged</span>'
+        :'<span style="color:#7C3AED;font-size:11px">↯ Wrong</span>')
+      : '<span style="color:#16A34A;font-size:11px">✓ Expected</span>'
+    return `<tr style="${rowBg}"><td title="${esc(l.sku)}">${esc(l.sku)}${l.onHold?' <span style="color:var(--amber)">⚠</span>':''}</td><td>${l.qty}</td><td>${statusIcon}</td></tr>`
+  }).join('')
+
+  document.getElementById('sp-body').innerHTML = `
+    <div class="sp-hdr">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+          <div class="sp-title">${ru.referenceNum}</div>
+          <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;${
+            getStatus(ru)==='Notified'?'background:#FEF3C7;color:#D97706':
+            getStatus(ru)==='Flagged'?'background:#FEE2E2;color:#DC2626':
+            getStatus(ru)==='Resolved'?'background:#DCFCE7;color:#16A34A':
+            'background:#DCFCE7;color:#16A34A'
+          }">${getStatus(ru)}</span>
+          ${d ? `<span class="badge ${d==='Damaged'?'b-damaged':d==='Extra item'?'b-extra':d==='Missing item'?'b-missing':'b-wrong'}" style="font-size:10px">${d}</span>` : ''}
+        </div>
+        <div class="sp-sub">${ru.customer} · ${fmt(ru.arrivalDate)}</div>
+      </div>
+      <button class="sp-x" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="sp-section">
+      <div class="sp-grid">
+        <div class="sp-field"><span class="dl">PO #</span><span class="dv">${ru.poNum}</span></div>
+        <div class="sp-field"><span class="dl">RA #</span><span class="dv">${ru.receiptAdviceNum??'—'}</span></div>
+        <div class="sp-field"><span class="dl">Txn #</span><span class="dv">${ru.transactionNum}</span></div>
+        <div class="sp-field"><span class="dl">On hold</span><span class="dv" style="color:${ru.onHold?'var(--amber)':'var(--green)'}">${ru.onHold?'⚠ Yes':'No'}</span></div>
+        <div class="sp-field"><span class="dl">Tracking #</span><span class="dv" style="font-size:10px">${ru.trackingNum}</span></div>
+      </div>
+    </div>
+    <div class="sp-section">
+      <div class="sp-label">Items received (${(ru.lines??[]).length || ru.lineCount})</div>
+      <table class="sp-tbl" style="table-layout:fixed;width:100%">
+        <thead><tr>
+          <th style="width:42%">SKU</th>
+          <th style="width:12%">Qty</th>
+          <th style="width:46%">Status</th>
+        </tr></thead>
+        <tbody>${itemTableRows||'<tr><td colspan="3" style="color:var(--text3)">No items loaded</td></tr>'}</tbody>
+      </table>
+    </div>
+    ${discBannerHtml || ''}
+    ${isAdmin ? flagForm : ''}
+    ${notesSectionHtml}
+    <div class="sp-actions" style="padding:12px 16px"><button class="btn btn-sm" onclick="closeDrawer()">Close</button></div>`
+
+  // Populate item rows after drawer renders — from saved items if present, else legacy fields
+  const itemContainer = document.getElementById('item-rows')
+  if (itemContainer) {
+    itemContainer.innerHTML = ''
+    const saved = normItems(f)
+    if (saved.length) {
+      saved.forEach((it, i) => itemContainer.appendChild(
+        buildItemRow(i, it.sku||'', it.upc||'', it.desc||'', it.expQty??'', it.rcvQty??'', it.condition||'', it.note||'')))
+    } else {
+      itemContainer.appendChild(buildItemRow(0, f.extra_sku||'', f.upc||'', f.item_desc||'', f.expected_qty||'', f.received_qty||'', d, ''))
+    }
+  }
+}
+
+function onTypeChange(idx) {
+  const type   = document.getElementById('d-type').value
+  const ef     = document.getElementById(`extra-fields-${idx}`)
+  if (ef) ef.classList.toggle('visible', type==='Extra item'||type==='Missing item'||type==='Wrong item')
+  const statusEl = document.getElementById('d-status')
+  if (statusEl && type && statusEl.value === 'Open') statusEl.value = 'Flagged'
+}
+
+// --- Multi-item helpers -----------------------------------------------------
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) }
+
+// Normalize the stored items array (JSONB may come back as array or string; old flags have none)
+function normItems(f) {
+  let arr = f && f.items
+  if (typeof arr === 'string') { try { arr = JSON.parse(arr) } catch(e) { arr = [] } }
+  return Array.isArray(arr) ? arr : []
+}
+
+// Render one clean, plain-English block for a single issue item
+function renderIssueBlock(it, flagReq943) {
+  const cond   = it.condition || ''
+  const sku    = esc(it.sku || '—')
+  const upcStr = it.upc ? ` (UPC ${esc(it.upc)})` : ''
+  const exp    = (it.expQty !== '' && it.expQty != null) ? it.expQty : '?'
+  const rcv    = (it.rcvQty !== '' && it.rcvQty != null) ? it.rcvQty : '?'
+  const expNum = parseFloat(it.expQty)
+  const onRma  = !(it.expQty === '' || it.expQty == null || (!isNaN(expNum) && expNum === 0))
+  const cfg = {
+    'Extra item':   { bg:'#FEF2F2', bd:'#FCA5A5', c:'#DC2626', ic:'⊕', title:'Extra item received' },
+    'Missing item': { bg:'#FFFBEB', bd:'#FCD34D', c:'#D97706', ic:'⊖', title:'Missing item — was on the RMA' },
+    'Damaged':      { bg:'#FFF7ED', bd:'#FDBA74', c:'#EA580C', ic:'⚠', title: onRma ? 'Damaged item received' : 'Damaged item — not on the RMA' },
+    'Wrong item':   { bg:'#F5F3FF', bd:'#C4B5FD', c:'#7C3AED', ic:'↯', title:'Wrong item received' },
+  }[cond]
+  if (!cfg) return ''
+  let body
+  if (cond === 'Extra item')        body = `SKU ${sku}${upcStr} was received but was <strong>not on the RMA</strong>. Expected ${exp} · Received ${rcv}.`
+  else if (cond === 'Missing item') body = `SKU ${sku}${upcStr} was on the RMA but <strong>was not received</strong>. Expected ${exp} · Received ${rcv}. Nation.LA may need to reship or issue a credit.`
+  else if (cond === 'Damaged')      body = onRma
+      ? `SKU ${sku}${upcStr} was received in <strong>damaged</strong> condition. Expected ${exp} · Received ${rcv}.`
+      : `SKU ${sku}${upcStr} was received <strong>damaged</strong>, and it was <strong>not on the RMA</strong>. Received ${rcv}.`
+  else if (cond === 'Wrong item')   body = `SKU ${sku}${upcStr} was received but <strong>does not match the RMA</strong>. Expected ${exp} · Received ${rcv}.`
+  const req943Str = (flagReq943 && onRma) ? ' A corrected 943 has been requested.'
+    : (flagReq943 && !onRma && cond === 'Damaged') ? ' (No 943 correction applies — this item was not on the RMA.)' : ''
+  const noteStr = it.note ? `<p style="font-size:12px;margin:6px 0 0;padding-top:6px;border-top:1px solid rgba(0,0,0,0.08);color:inherit;opacity:0.9"><strong>Note:</strong> ${esc(it.note)}</p>` : ''
+  return `<div style="padding:12px 16px;background:${cfg.bg};border-top:0.5px solid ${cfg.bd};display:flex;gap:10px;align-items:flex-start"><span style="color:${cfg.c};font-size:15px;flex-shrink:0">${cfg.ic}</span><div style="flex:1"><p style="font-size:13px;font-weight:600;color:${cfg.c};margin:0 0 2px">${cfg.title}</p><p style="font-size:12px;color:${cfg.c};margin:0;line-height:1.5">${body}${req943Str}</p>${noteStr}</div></div>`
+}
+// ---------------------------------------------------------------------------
+
+function buildItemRow(idx, sku, upc, desc, expQty, rcvQty, condition, note) {
+  sku = sku || ''; upc = upc || ''; desc = desc || ''; expQty = expQty || ''; rcvQty = rcvQty || ''; note = note || '';
+  const typeEl = document.getElementById('d-type')
+  condition = condition || (typeEl ? typeEl.value : '') || ''
+  const delta = expQty !== '' && rcvQty !== '' ? parseFloat(rcvQty) - parseFloat(expQty) : ''
+  const diffColor = delta === '' ? 'var(--text3)' : delta < 0 ? 'var(--red)' : delta > 0 ? 'var(--amber)' : 'var(--green)'
+  const diffVal = delta !== '' ? (delta > 0 ? '+' + delta : String(delta)) : ''
+  const opt = v => `<option ${condition===v?'selected':''}>${v}</option>`
+
+  const div = document.createElement('div')
+  div.className = 'item-row'
+  div.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;position:relative'
+
+  div.innerHTML = (idx > 0 ? '<button type="button" onclick="removeItemRow(this)" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:0;line-height:1;float:right">×</button>' : '') +
+    '<div class="form-row three" style="margin-bottom:8px">' +
+      '<div class="form-field"><label>SKU</label><input type="text" class="item-sku" placeholder="SKU-XXXX" value="' + esc(sku) + '"></div>' +
+      '<div class="form-field"><label>UPC</label><input type="text" class="item-upc" placeholder="840426470892" value="' + esc(upc) + '"></div>' +
+      '<div class="form-field"><label>Issue type</label><select class="item-cond"><option value="">— Select —</option>' + opt('Damaged') + opt('Missing item') + opt('Extra item') + opt('Wrong item') + '</select></div>' +
+    '</div>' +
+    '<div class="form-row three" style="margin-bottom:8px">' +
+      '<div class="form-field"><label>Expected qty</label><input type="number" class="item-expqty" placeholder="0" oninput="calcRowDiff(this)" value="' + esc(expQty) + '"></div>' +
+      '<div class="form-field"><label>Received qty</label><input type="number" class="item-rcvqty" placeholder="0" oninput="calcRowDiff(this)" value="' + esc(rcvQty) + '"></div>' +
+      '<div class="form-field"><label>Qty difference</label><input type="text" class="item-diff" placeholder="Auto" readonly style="background:var(--surface2);color:' + diffColor + '" value="' + diffVal + '"></div>' +
+    '</div>' +
+    '<div class="form-row" style="grid-template-columns:1fr 1fr;display:grid;gap:8px">' +
+      '<div class="form-field"><label>Item note (e.g. how it was damaged)</label><input type="text" class="item-note" placeholder="Stained, torn, wrong color…" value="' + esc(note) + '"></div>' +
+      '<div class="form-field"><label>Description</label><input type="text" class="item-desc" placeholder="Item description" value="' + esc(desc) + '"></div>' +
+    '</div>'
+  return div
+}
+function addItemRow() {
+  const container = document.getElementById('item-rows')
+  if (!container) return
+  const idx = container.querySelectorAll('.item-row').length
+  container.appendChild(buildItemRow(idx))
+}
+
+function removeItemRow(btn) {
+  btn.closest('.item-row').remove()
+}
+
+function calcRowDiff(input) {
+  const row    = input.closest('.item-row')
+  const exp    = parseFloat(row.querySelector('.item-expqty').value ?? '')
+  const rcv    = parseFloat(row.querySelector('.item-rcvqty').value ?? '')
+  const diff   = row.querySelector('.item-diff')
+  if (!isNaN(exp) && !isNaN(rcv)) {
+    const delta = rcv - exp
+    diff.value  = delta > 0 ? '+' + delta : String(delta)
+    diff.style.color = delta < 0 ? 'var(--red)' : delta > 0 ? 'var(--amber)' : 'var(--green)'
+  }
+}
+
+function calcDiff() {
+  // Legacy — kept for compatibility
+}
+
+function getItemRows() {
+  const rows = document.querySelectorAll('#item-rows .item-row')
+  return Array.from(rows).map(row => ({
+    sku:       row.querySelector('.item-sku')?.value?.trim() || '',
+    upc:       row.querySelector('.item-upc')?.value?.trim() || '',
+    desc:      row.querySelector('.item-desc')?.value?.trim() || '',
+    condition: row.querySelector('.item-cond')?.value || '',
+    expQty:    row.querySelector('.item-expqty')?.value || '',
+    rcvQty:    row.querySelector('.item-rcvqty')?.value || '',
+    note:      row.querySelector('.item-note')?.value?.trim() || '',
+  })).filter(r => r.sku || r.upc)
+}
+
+function closeDrawer() {
+  activeIdx = null
+  document.getElementById('side-panel').classList.remove('open')
+  document.getElementById('sp-body').innerHTML = ''
+  document.querySelectorAll('#tbl tr').forEach(tr => tr.classList.remove('row-active'))
+}
+
+async function saveFlag(idx) {
+  const r      = allRecords[idx] ?? records[idx]
+  const type   = document.getElementById('d-type').value
+  let status   = document.getElementById('d-status').value
+  const notes  = document.getElementById('d-notes').value          // admin free-text only — no machine dump
+  const req943 = document.getElementById('d-943').checked
+
+  // Full structured item list → JSONB. Each item keeps its own condition + note.
+  const items = getItemRows().map(it => ({
+    sku:       it.sku || null,
+    upc:       it.upc || null,
+    desc:      it.desc || null,
+    condition: it.condition || type || null,
+    expQty:    it.expQty !== '' ? parseFloat(it.expQty) : null,
+    rcvQty:    it.rcvQty !== '' ? parseFloat(it.rcvQty) : null,
+    note:      it.note || null,
+  }))
+  const first       = items[0] ?? {}
+  const primaryType = type || first.condition || null
+  if (primaryType && status === 'Open') status = 'Flagged'
+
+  await upsertFlag(r.receiverId, r.referenceNum, r.poNum, {
+    discrepancy_type: primaryType,
+    dash_status:      status,
+    notes:            notes,
+    request_943:      req943,
+    items:            items,                        // structured multi-item list (JSONB)
+    extra_sku:        first.sku ?? null,            // legacy columns kept for export / older readers
+    upc:              first.upc ?? null,
+    item_desc:        first.desc ?? null,
+    expected_qty:     first.expQty ?? null,
+    received_qty:     first.rcvQty ?? null,
+  })
+  toast('Flag saved')
+  updateMetrics(); render()
+}
+async function saveAndNotify(idx) {
+  await saveFlag(idx)
+  const r     = records[idx]
+  const f     = getFlag(r)
+  const type  = f.discrepancy_type || 'Discrepancy'
+  const req943= f.request_943
+
+  // Build email recipients from contacts
+  const toEmails = contacts.map(c => c.email).join(';') || ''
+
+  // Build email subject
+  const subject = `Return Discrepancy — ${r.referenceNum} | ${type}`
+
+  // Build email body
+  const notifyItems = normItems(f)
+  let discSummary
+  if (notifyItems.length) {
+    discSummary = notifyItems.map(it => {
+      const exp = it.expQty ?? '?', rcv = it.rcvQty ?? '?'
+      const onRma = !(it.expQty == null || parseFloat(it.expQty) === 0)
+      if (it.condition === 'Extra item')   return `• SKU ${it.sku||'—'} was received but was NOT on the RMA (received ${rcv}, expected ${exp}).`
+      if (it.condition === 'Missing item')  return `• SKU ${it.sku||'—'} was on the RMA but was NOT received (expected ${exp}, received ${rcv}).`
+      if (it.condition === 'Damaged')       return `• SKU ${it.sku||'—'} was received DAMAGED${onRma?'':' (not on the RMA)'} (received ${rcv})${it.note?` — ${it.note}`:''}.`
+      if (it.condition === 'Wrong item')    return `• SKU ${it.sku||'—'} was received but does not match the RMA (expected ${exp}, received ${rcv}).`
+      return `• SKU ${it.sku||'—'}: discrepancy noted.`
+    }).join('\n')
+  } else {
+    discSummary = {
+      'Extra item':   `SKU ${f.extra_sku||'—'} was received but was NOT included on the original RMA. We received ${f.received_qty||'?'} unit(s) but expected ${f.expected_qty||'0'}.`,
+      'Missing item': `SKU ${f.extra_sku||'—'} was listed on the RMA but was NOT received. We expected ${f.expected_qty||'?'} unit(s) but received ${f.received_qty||'0'}.`,
+      'Damaged':      `SKU ${f.extra_sku||'—'} was received in damaged condition. Qty affected: ${f.received_qty||'?'} unit(s).`,
+      'Wrong item':   `SKU ${f.extra_sku||'—'} was received but does not match the RMA. Expected: ${f.expected_qty||'?'} · Received: ${f.received_qty||'?'}.`,
+    }[type] || `A discrepancy was identified during processing of this return.`
+  }
+
+  const lines = [
+    `Hi,`,
+    ``,
+    `We are writing to notify you of a return discrepancy identified during processing at Garment Group. Please review the details below and take action where needed.`,
+    ``,
+    `── WHAT HAPPENED ────────────────────────────`,
+    `${discSummary}`,
+    ``,
+    `── RECEIPT DETAILS ──────────────────────────`,
+    `Reference #:        ${r.referenceNum}`,
+    `PO #:               ${r.poNum}`,
+    `Receipt Advice #:   ${r.receiptAdviceNum || '—'}`,
+    `Receipt Date:       ${fmt(r.arrivalDate)}`,
+    `Transaction #:      ${r.transactionNum}`,
+    f.upc ? `UPC:                ${f.upc}` : '',
+    ``,
+    req943 ? `── ACTION REQUIRED ──────────────────────────` : '',
+    req943 ? `Please issue a corrected 943 for this receipt at your earliest convenience.` : '',
+    req943 ? `` : '',
+    `── NOTES ────────────────────────────────────`,
+    f.notes || 'No additional notes.',
+    ``,
+    `You can view this return and all open discrepancies on the portal:`,
+    `https://gg-nation-la-return-dashboard.vercel.app`,
+    ``,
+    `── ─────────────────────────────────────────`,
+    `Garment Group — Returns & Receiving Team`,
+  ].filter(l => l !== null && l !== undefined).join('%0D%0A')
+
+  // Open Outlook / default mail client
+  const mailtoLink = `mailto:${toEmails}?subject=${encodeURIComponent(subject)}&body=${lines}`
+  window.open(mailtoLink, '_blank')
+
+  // Update status to Notified
+  await upsertFlag(r.receiverId, r.referenceNum, r.poNum, {
+    dash_status: 'Notified',
+    notified_at: new Date().toISOString()
+  })
+
+  let logMsg = `${r.referenceNum} — ${type}`
+  if (req943) logMsg += ' — 943 requested'
+  logMsg += ` · email drafted for ${toEmails || 'client'}`
+  await logNotif(logMsg)
+  toast(`Email drafted — review and send in Outlook`)
+  closeDrawer(); updateMetrics(); render()
+}
+
+async function resolveAndRemove(idx) {
+  const r = allRecords[idx] ?? records[idx]
+  if (!confirm(`Remove ${r.referenceNum} from dashboard? This will clear the flag and remove it permanently.`)) return
+  // Clear the flag
+  await upsertFlag(r.receiverId, r.referenceNum, r.poNum, {
+    discrepancy_type: null, dash_status: 'Resolved', notes: '',
+    request_943: false, extra_sku: null, expected_qty: null, received_qty: null,
+  })
+  // Remove from cache
+  await fetch(
+    `${SUPA_URL}/rest/v1/receivers_cache?receiver_id=eq.${r.receiverId}`,
+    {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_ANON, 'Authorization': `Bearer ${SUPA_ANON}` }
+    }
+  )
+  // Remove from local arrays
+  const ai = allRecords.indexOf(r)
+  if (ai > -1) allRecords.splice(ai, 1)
+  const ri = records.indexOf(r)
+  if (ri > -1) records.splice(ri, 1)
+  toast(`${r.referenceNum} resolved and removed`)
+  closeDrawer(); updateMetrics(); render(); renderPagination()
+}
+
+async function clearFlag(idx) {
+  const r = records[idx]
+  await upsertFlag(r.receiverId, r.referenceNum, r.poNum, {
+    discrepancy_type:null, dash_status:'Open', notes:'',
+    request_943:false, extra_sku:null, expected_qty:null, received_qty:null,
+  })
+  toast('Flag cleared')
+  closeDrawer(); updateMetrics(); render()
+}
+
+async function notifyAll() {
+  const open = records.filter(r=>getStatus(r)!=='Notified')
+  if (!open.length) { toast('All records already notified'); return }
+  for (const r of open) {
+    await upsertFlag(r.receiverId, r.referenceNum, r.poNum, { dash_status:'Notified', notified_at: new Date().toISOString() })
+  }
+  const names = contacts.map(c=>c.email).join(', ')||'client'
+  await logNotif(`All open receipts (${open.length}) notified — ${names}`)
+  toast(`${open.length} receipt${open.length!==1?'s':''} — client notified`)
+  updateMetrics(); render()
+}
+
+async function sendEOD() {
+  const total = records.length
+  const disc  = records.filter(r=>getDisc(r)).length
+  const req   = records.filter(r=>get943(r)).length
+  const names = contacts.map(c=>c.email).join(', ')||'client'
+  await logNotif(`EOD → ${names} | ${total} open · ${disc} discrepancies · ${req} new 943 requested`)
+  toast('EOD summary sent')
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+function exportCSV() {
+  // Export what the user is actually looking at:
+  //  - if any filter is active → export the full filtered set (all matches, not just page 1)
+  //  - if no filter is active  → export every record, not the 100-row page
+  const isFiltering = document.getElementById('f-q').value
+    || document.getElementById('f-disc').value
+    || document.getElementById('f-status').value
+    || document.getElementById('f-943').value
+  // Never export records that are closed in Extensiv — matches the portal view.
+  const exportRows = (isFiltering ? filtered() : allRecords).filter(r => !r._closedInExtensiv)
+  if (!exportRows.length) { toast('Nothing to export', 'warn'); return }
+
+  // One row PER flagged item so multi-item discrepancies are fully visible.
+  // Emily's original 15 columns keep their exact names + positions; the 4 new
+  // per-item columns are appended at the end so existing sheet formulas don't shift.
+  const hdr  = ['Status','Reference #','PO #','Receipt Advice #','Arrival','SKUs','Units','Lines',
+                'Discrepancy','Extra SKU','Exp Qty','Rcv Qty','943 Requested','Notes','Txn #',
+                'Item #','Item UPC','Qty Diff','Item Note']
+  const numOr = v => (v === '' || v == null) ? null : Number(v)
+  const rows = exportRows.flatMap(r => {
+    const f    = getFlag(r)
+    const head = [getStatus(r), r.referenceNum, r.poNum, r.receiptAdviceNum??'', fmt(r.arrivalDate),
+                  (r.skus??[]).join('|'), r.totalQty, r.lineCount]
+    // Builds a row: original cols 1-15, then the 4 appended cols 16-19.
+    const mk = (disc, sku, exp, rcv, itemNo, upc, note) => {
+      const e = numOr(exp), v = numOr(rcv)
+      const diff = (e!=null && v!=null) ? v-e : ''
+      return [...head,
+        disc, sku, exp, rcv,                                     // 9-12
+        f.request_943?'Yes':'No', f.notes??'', r.transactionNum, // 13-15
+        itemNo, upc, diff, note]                                 // 16-19 (new)
+    }
+    const items = normItems(f)
+
+    if (!items.length) {
+      // No structured items — fall back to the legacy flat columns (item 1 only).
+      if (f.discrepancy_type || f.extra_sku)
+        return [mk(f.discrepancy_type??'', f.extra_sku??'', f.expected_qty??'', f.received_qty??'', '1', f.upc??'', '')]
+      return [mk('', '', '', '', '', '', '')]   // no flag at all
+    }
+
+    return items.map((it, i) =>
+      mk(it.condition || f.discrepancy_type || '', it.sku||'', it.expQty??'', it.rcvQty??'', String(i+1), it.upc||'', it.note||''))
+  })
+  const csv  = [hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `returns_${isFiltering?'filtered_':''}${new Date().toISOString().slice(0,10)}.csv`
+  document.body.appendChild(a); a.click(); a.remove()
+  URL.revokeObjectURL(url)
+  toast(`Exported ${exportRows.length} receipt${exportRows.length!==1?'s':''} · ${rows.length} line item${rows.length!==1?'s':''}`)
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function fmt(raw) {
+  if (!raw) return '—'
+  // Parse date without timezone conversion to match Extensiv display
+  const parts = raw.split('T')[0].split('-')
+  if (parts.length === 3) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    return `${months[parseInt(parts[1])-1]} ${parseInt(parts[2])}, ${parts[0]}`
+  }
+  return new Date(raw).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+}
+function toast(msg,type='ok') {
+  const w=document.getElementById('toasts'),el=document.createElement('div')
+  el.className=`toast ${type}`;el.textContent=msg
+  w.prepend(el);setTimeout(()=>el.remove(),4000)
+}
+function hideLoad() { document.getElementById('loading').classList.add('h') }
+function showErr(msg) { const e=document.getElementById('err-banner');e.style.display=msg?'block':'none';e.textContent=msg }
+function checkEOD() {
+  const now=new Date(),cut=new Date();cut.setHours(17,0,0,0)
+  if(now>=cut){document.getElementById('eod-pill').classList.add('done');document.getElementById('eod-lbl').textContent='Processing complete'}
+}
+
+sb.auth.getSession().then(({data:{session}}) => {
+  if (!session) {
+    hideLoad()  // no session = show login immediately
+  }
+  // if session exists, onAuthStateChange will fire bootApp
+})
+
+function toggleFlagForm() {
+  const body  = document.getElementById('flag-form-body')
+  const arrow = document.getElementById('flag-toggle-arrow')
+  if (!body) return
+  const isOpen = body.classList.toggle('open')
+  if (arrow) arrow.textContent = isOpen ? '▲' : '▼'
+}
+
+function metricFilter(key) {
+  const statusEl = document.getElementById('f-status')
+  const discEl   = document.getElementById('f-disc')
+  const f943El   = document.getElementById('f-943')
+  const qEl      = document.getElementById('f-q')
+  statusEl.value = ''; discEl.value = ''; f943El.value = ''; qEl.value = ''
+  showAll = (key === 'all')                        // Total → show every record, not just page 1
+  if (key === 'missing') discEl.value = 'Missing item'
+  if (key === 'damaged') discEl.value = 'Damaged'
+  if (key === 'notrma')  discEl.value = 'Extra item'
+  if (key === '943')     f943El.value = '1'
+  document.querySelectorAll('.metric').forEach(el => el.classList.remove('active'))
+  document.getElementById('mc-' + key)?.classList.add('active')
+  render()
+  document.getElementById('f-q').scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+</script>
+</body>
+</html>
