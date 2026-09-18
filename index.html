@@ -1517,7 +1517,7 @@ async function saveFlag(idx) {
 }
 async function saveAndNotify(idx) {
   await saveFlag(idx)
-  const r     = records[idx]
+  const r     = allRecords[idx] ?? records[idx]
   const f     = getFlag(r)
   const type  = f.discrepancy_type || 'Discrepancy'
   const req943= f.request_943
@@ -1623,7 +1623,7 @@ async function resolveAndRemove(idx) {
 }
 
 async function clearFlag(idx) {
-  const r = records[idx]
+  const r = allRecords[idx] ?? records[idx]
   await upsertFlag(r.receiverId, r.referenceNum, r.poNum, {
     discrepancy_type:null, dash_status:'Open', notes:'',
     request_943:false, extra_sku:null, expected_qty:null, received_qty:null,
