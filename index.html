@@ -294,6 +294,34 @@ tr:hover td{background:var(--surface2)}
 
 .err-banner{background:var(--red-l);border:1px solid #FCA5A5;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);display:none}
 input::placeholder,textarea::placeholder{color:var(--text3)}
+
+/* ── EXCEPTIONS TABS (RTS / Unknown) ── */
+.view-tabs{display:flex;gap:2px;padding:0 1.75rem;background:var(--surface);border-bottom:1px solid var(--border)}
+.view-tab{padding:11px 16px;border:none;background:none;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.view-tab:hover{color:var(--text)}
+.view-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.vt-count{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:10px;background:var(--amber-l);color:var(--amber)}
+.vt-count:empty{display:none}
+#app.ex-mode .metrics,#app.ex-mode main > .controls,#app.ex-mode .content-wrap,#app.ex-mode #admin-panel{display:none!important}
+#app:not(.ex-mode) #ex-view{display:none}
+#ex-view{display:flex;flex-direction:column;gap:1rem}
+.ex-metrics{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.ex-metric{padding:14px 20px;border:none;border-right:1px solid var(--border);border-bottom:2px solid transparent;background:none;text-align:left;cursor:pointer;font-family:var(--sans)}
+.ex-metric:last-child{border-right:none}
+.ex-metric:hover{background:var(--surface2)}
+.ex-metric.on{background:var(--accent-l);border-bottom-color:var(--accent)}
+.ex-wrap{display:flex;align-items:flex-start;gap:0}
+.ex-tbl{flex:1;min-width:0;overflow-x:auto}
+.ex-tbl table{table-layout:auto;min-width:900px}
+.ex-tbl tbody tr{cursor:pointer}
+.ex-note{font-size:11px;color:var(--text2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:230px}
+.ex-dash{color:var(--text3);font-size:11px}
+.ex-sub{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.b-done{background:var(--green-l);color:var(--green);border:1px solid #BBF7D0}
+#ex-panel{width:0;overflow:hidden;transition:width .2s ease;position:sticky;top:64px;flex-shrink:0}
+#ex-panel.open{width:440px;margin-left:14px}
+.ex-card{width:440px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);max-height:calc(100vh - 80px);overflow-y:auto}
+.ex-body{font-size:12px;white-space:pre-wrap;line-height:1.5;color:var(--text)}
 </style>
 </head>
 <body>
@@ -341,6 +369,13 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <button class="btn" onclick="doLogout()">Sign out</button>
     </div>
   </header>
+
+  <!-- View tabs: Receipts | RTS | Unknown packages -->
+  <nav class="view-tabs" id="view-tabs">
+    <button class="view-tab on" data-view="RECEIPTS" onclick="exSwitch('RECEIPTS')">Receipts</button>
+    <button class="view-tab" data-view="RTS" onclick="exSwitch('RTS')">Return to sender <span class="vt-count" id="vt-RTS"></span></button>
+    <button class="view-tab" data-view="UNKNOWN" onclick="exSwitch('UNKNOWN')">Unknown packages <span class="vt-count" id="vt-UNKNOWN"></span></button>
+  </nav>
 
   <div class="metrics">
     <div class="metric" id="mc-all" onclick="metricFilter('all')"><div class="metric-val c-blue" id="m-total">—</div><div class="metric-lbl">Total receipts</div><div class="metric-sub">Open + flagged closed</div></div>
@@ -434,6 +469,33 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
       <div class="sp-body" id="sp-body"></div>
     </div>
     </div><!-- end content-wrap -->
+
+    <!-- RTS / Unknown packages view (read-only) -->
+    <div id="ex-view">
+      <div class="ex-metrics" id="ex-metrics"></div>
+      <div class="controls">
+        <div class="search-wrap">
+          <span class="search-ico">⌕</span>
+          <input type="text" id="ex-q" placeholder="Search tracking (short or long), order #, PO, customer, notes…" oninput="exRender()">
+        </div>
+        <select id="ex-ch" onchange="exRender()">
+          <option value="">All channels</option>
+          <option value="Ecom">Ecom</option>
+          <option value="Wholesale">Wholesale</option>
+        </select>
+        <button class="btn" onclick="exLoad(true)">↻ Reload</button>
+      </div>
+      <div class="ex-wrap">
+        <div class="tbl-wrap ex-tbl">
+          <table>
+            <thead id="ex-head"></thead>
+            <tbody id="ex-tbody"><tr class="empty"><td colspan="8">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <aside id="ex-panel"><div class="ex-card" id="ex-card"></div></aside>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1731,6 +1793,159 @@ function checkEOD() {
   const now=new Date(),cut=new Date();cut.setHours(17,0,0,0)
   if(now>=cut){document.getElementById('eod-pill').classList.add('done');document.getElementById('eod-lbl').textContent='Processing complete'}
 }
+
+// ─── RTS / UNKNOWN PACKAGES (read-only view of receipt_exceptions) ──────────
+let exRows = [], exTab = 'RECEIPTS', exStatus = '', exSel = null, exLoaded = false, exBusy = false
+const EX_ORDER = { 'Pending': 0, 'GG Done': 1, 'Client Done': 2 }
+
+async function exLoad(force) {
+  if (exBusy || (exLoaded && !force)) { exRender(); return }
+  exBusy = true
+  try {
+    const { data, error } = await sb.from('receipt_exceptions').select('*')
+    if (error) throw error
+    exRows = (data ?? []).sort((a, b) =>
+      (EX_ORDER[a.status] ?? 9) - (EX_ORDER[b.status] ?? 9) ||
+      new Date(b.created_at) - new Date(a.created_at) ||
+      (b.sheet_row ?? 0) - (a.sheet_row ?? 0))
+    exLoaded = true
+  } catch (e) {
+    console.warn('exLoad:', e.message)
+    const tb = document.getElementById('ex-tbody')
+    if (tb) tb.innerHTML = `<tr class="empty"><td colspan="8">Could not load: ${esc(e.message)}</td></tr>`
+    exBusy = false
+    return
+  }
+  exBusy = false
+  exCounts()
+  exRender()
+}
+
+function exCounts() {
+  ;['RTS', 'UNKNOWN'].forEach(t => {
+    const el = document.getElementById('vt-' + t)
+    if (el) { const n = exRows.filter(r => r.type === t && r.status === 'Pending').length; el.textContent = n || '' }
+  })
+}
+
+function exSwitch(view) {
+  exTab = view
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('on', b.dataset.view === view))
+  document.getElementById('app').classList.toggle('ex-mode', view !== 'RECEIPTS')
+  if (view === 'RECEIPTS') { exClose(); return }
+  exStatus = ''; exSel = null
+  document.getElementById('ex-q').value = ''
+  document.getElementById('ex-ch').value = ''
+  document.getElementById('ex-panel').classList.remove('open')
+  exLoad(true)
+}
+
+const exStatusBadge = s => `<span class="badge ${s === 'Pending' ? 'b-flagged' : s === 'GG Done' ? 'b-notified' : 'b-done'}">${esc(s)}</span>`
+const exChanBadge   = c => c ? `<span class="badge ${c === 'Wholesale' ? 'b-extra' : 'b-open'}">${esc(c)}</span>` : '<span class="ex-dash">—</span>'
+const exCell        = (t, mono) => t ? `<div class="ex-note"${mono ? ' style="font-family:var(--mono)"' : ''} title="${esc(t)}">${esc(t)}</div>` : '<span class="ex-dash">—</span>'
+const exNoSpace     = s => String(s ?? '').replace(/\s+/g, '')
+
+function exFiltered() {
+  const q  = (document.getElementById('ex-q')?.value ?? '').toLowerCase().trim()
+  const qn = q.replace(/\s+/g, '')
+  const ch = document.getElementById('ex-ch')?.value ?? ''
+  return exRows.filter(r => {
+    if (r.type !== exTab) return false
+    if (exStatus && r.status !== exStatus) return false
+    if (ch && exTab === 'RTS' && r.channel !== ch) return false
+    if (q) {
+      const items = (Array.isArray(r.items) ? r.items : []).map(i => i.sku).join(' ')
+      const hay = [r.tracking, exNoSpace(r.tracking_raw), r.order_ref, r.customer_name, r.ra_num,
+                   r.gg_notes, r.client_notes, r.resolution, items].join(' ').toLowerCase()
+      if (!hay.includes(q) && !hay.includes(qn)) return false
+    }
+    return true
+  })
+}
+
+function exRender() {
+  if (exTab === 'RECEIPTS') return
+  const rts = exTab === 'RTS'
+  document.getElementById('ex-ch').style.display = rts ? '' : 'none'
+
+  const all = exRows.filter(r => r.type === exTab)
+  const n = s => all.filter(r => r.status === s).length
+  const cards = [['', 'Total', all.length, 'c-blue'], ['Pending', 'Pending', n('Pending'), 'c-amber'],
+                 ['GG Done', 'GG done · awaiting client', n('GG Done'), 'c-purple'], ['Client Done', 'Client done', n('Client Done'), 'c-green']]
+  document.getElementById('ex-metrics').innerHTML = cards.map(([k, l, v, c]) =>
+    `<button class="ex-metric${exStatus === k ? ' on' : ''}" onclick="exStatus='${k}';exRender()"><div class="metric-val ${c}">${v}</div><div class="metric-lbl">${l}</div></button>`).join('')
+
+  document.getElementById('ex-head').innerHTML = rts
+    ? '<tr><th>Status</th><th>Channel</th><th>Tracking</th><th>Order / PO</th><th>Customer</th><th>Client notes</th><th>GG notes</th><th>Resolution</th></tr>'
+    : '<tr><th>Status</th><th>Tracking</th><th>Customer</th><th>Order / RA</th><th>Items</th><th>Client notes</th><th>GG notes</th><th>Resolution</th></tr>'
+
+  const list = exFiltered()
+  const tb = document.getElementById('ex-tbody')
+  if (!list.length) { tb.innerHTML = `<tr class="empty"><td colspan="8">${exLoaded ? 'No entries match these filters' : 'Loading…'}</td></tr>`; return }
+  tb.innerHTML = list.map(r => {
+    const items = (Array.isArray(r.items) ? r.items : []).map(i => i.sku + (i.qty > 1 ? ` ×${i.qty}` : '')).join(', ')
+    const ora = [r.order_ref, r.ra_num ? `RA ${r.ra_num}` : null].filter(Boolean).join(' · ')
+    const longNote = r.tracking_raw && exNoSpace(r.tracking_raw) !== r.tracking ? '<div class="ex-sub">from long USPS #</div>' : ''
+    return `<tr class="${exSel === r.id ? 'row-active' : ''}" onclick="exShow(${r.id})">
+      <td>${exStatusBadge(r.status)}</td>
+      ${rts ? `<td>${exChanBadge(r.channel)}</td>` : ''}
+      <td class="mc">${esc(r.tracking || '—')}${longNote}</td>
+      ${rts ? `<td>${exCell(r.order_ref, true)}</td><td>${exCell(r.customer_name)}</td>`
+            : `<td>${exCell(r.customer_name)}</td><td>${exCell(ora, true)}</td><td>${exCell(items, true)}</td>`}
+      <td>${exCell(r.client_notes)}</td>
+      <td>${exCell(r.gg_notes)}</td>
+      <td>${exCell(r.resolution, true)}</td>
+    </tr>`
+  }).join('')
+}
+
+function exShow(id) {
+  if (exSel === id) { exClose(); return }
+  const r = exRows.find(x => x.id === id); if (!r) return
+  exSel = id
+  const items = Array.isArray(r.items) ? r.items : []
+  const itemsHtml = items.length
+    ? `<table class="sp-tbl"><thead><tr><th>SKU</th><th>Qty</th><th>Note</th></tr></thead><tbody>${items.map(i =>
+        `<tr><td>${esc(i.sku)}</td><td>${esc(i.qty ?? '')}</td><td>${esc(i.note || '—')}</td></tr>`).join('')}</tbody></table>`
+    : '<span class="ex-dash">No items listed</span>'
+  const fld = (k, v, full) => `<div class="sp-field"${full ? ' style="grid-column:1/-1"' : ''}><span class="dl">${k}</span><span class="dv" style="word-break:break-all">${esc(v || '—')}</span></div>`
+  const stamp = r.source === 'sheet_import'
+    ? `Imported from the sheet (row ${r.sheet_row})`
+    : `Created ${fmt(r.created_at)}${r.created_by ? ' by ' + esc(r.created_by) : ''}`
+  document.getElementById('ex-card').innerHTML = `
+    <div class="sp-hdr">
+      <div>
+        <div class="sp-title" style="word-break:break-all">${esc(r.tracking || '—')}</div>
+        <div class="sp-sub" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">${exStatusBadge(r.status)} ${r.type === 'RTS' ? exChanBadge(r.channel) : ''} <span>${r.type === 'RTS' ? 'Return to sender' : 'Unknown package'}</span></div>
+      </div>
+      <button class="sp-x" onclick="exClose()">×</button>
+    </div>
+    <div class="sp-section"><div class="sp-grid" style="grid-template-columns:1fr 1fr">
+      ${fld('Tracking as entered', r.tracking_raw, true)}
+      ${fld('Order / PO', r.order_ref, true)}
+      ${fld('Customer', r.customer_name)}
+      ${fld('RA #', r.ra_num)}
+    </div></div>
+    ${r.type === 'UNKNOWN' ? `<div class="sp-section"><div class="sp-label">Items in the package</div>${itemsHtml}</div>` : ''}
+    <div class="sp-section"><div class="sp-label">Client notes</div><div class="ex-body">${esc(r.client_notes || '—')}</div></div>
+    <div class="sp-section"><div class="sp-label">GG notes</div><div class="ex-body">${esc(r.gg_notes || '—')}</div></div>
+    <div class="sp-section"><div class="sp-label">Resolution</div><div class="ex-body">${esc(r.resolution || '—')}</div></div>
+    <div style="padding:10px 16px;font-size:10px;color:var(--text3)">${stamp}</div>`
+  document.getElementById('ex-panel').classList.add('open')
+  exRender()
+}
+
+function exClose() {
+  exSel = null
+  document.getElementById('ex-panel')?.classList.remove('open')
+  exRender()
+}
+
+// Pending counts on the tabs once signed in. Separate listener — bootApp untouched.
+// setTimeout keeps the Supabase query out of the auth callback (avoids auth-lock deadlock).
+sb.auth.onAuthStateChange((event, session) => {
+  if (session?.user && !exLoaded) setTimeout(() => exLoad(false), 0)
+})
 
 sb.auth.getSession().then(({data:{session}}) => {
   if (!session) {
