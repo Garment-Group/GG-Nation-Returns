@@ -322,6 +322,14 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 #ex-panel.open{width:440px;margin-left:14px}
 .ex-card{width:440px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);max-height:calc(100vh - 80px);overflow-y:auto}
 .ex-body{font-size:12px;white-space:pre-wrap;line-height:1.5;color:var(--text)}
+.ex-form .form-field{margin-bottom:9px}
+.ex-form .form-field input,.ex-form .form-field select,.ex-form .form-field textarea{width:100%}
+.ex-hint{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px}
+.ex-item{display:grid;grid-template-columns:1fr 60px 1fr 24px;gap:6px;margin-bottom:6px;align-items:center}
+.ex-item input{padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:var(--sans);font-size:12px;color:var(--text);min-width:0}
+.ex-item input:focus{outline:none;border-color:var(--accent)}
+.ex-x{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;line-height:1}
+.ex-ro{font-size:12px;color:var(--text);white-space:pre-wrap;min-height:16px}
 </style>
 </head>
 <body>
@@ -484,6 +492,7 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
           <option value="Wholesale">Wholesale</option>
         </select>
         <button class="btn" onclick="exLoad(true)">↻ Reload</button>
+        <button class="btn btn-accent" id="ex-new" style="display:none" onclick="exShow('new')">＋ New entry</button>
       </div>
       <div class="ex-wrap">
         <div class="tbl-wrap ex-tbl">
@@ -1867,6 +1876,8 @@ function exRender() {
   if (exTab === 'RECEIPTS') return
   const rts = exTab === 'RTS'
   document.getElementById('ex-ch').style.display = rts ? '' : 'none'
+  const nb = document.getElementById('ex-new')
+  if (nb) { nb.style.display = isAdmin ? 'inline-flex' : 'none'; nb.textContent = rts ? '＋ New RTS' : '＋ New unknown package' }
 
   const all = exRows.filter(r => r.type === exTab)
   const n = s => all.filter(r => r.status === s).length
@@ -1899,40 +1910,175 @@ function exRender() {
   }).join('')
 }
 
+// USPS IMpb: strip "420"+ZIP5 (30 digits) or "420"+ZIP+4 (34 digits) → 22-digit tracking.
+// UPS 1Z…, FedEx and already-short USPS numbers pass through unchanged.
+function exShortTracking(raw) {
+  const t = String(raw ?? '').replace(/\s+/g, '').toUpperCase()
+  if (/^420\d{27}$/.test(t)) return t.slice(8)
+  if (/^420\d{31}$/.test(t)) return t.slice(12)
+  return t
+}
+
+function exTrackPreview() {
+  const raw = document.getElementById('exf-track')?.value ?? ''
+  const s = exShortTracking(raw), el = document.getElementById('exf-track-hint')
+  if (!el) return
+  el.textContent = !s ? '' : (s !== raw.replace(/\s+/g, '').toUpperCase() ? `Saves as: ${s}` : '')
+}
+
+function exItemRow(it = {}) {
+  return `<div class="ex-item">
+    <input class="exi-sku"  placeholder="SKU" value="${esc(it.sku ?? '')}">
+    <input class="exi-qty"  type="number" min="0" placeholder="Qty" value="${esc(it.qty ?? 1)}">
+    <input class="exi-note" placeholder="Note (e.g. damaged)" value="${esc(it.note ?? '')}">
+    <button type="button" class="ex-x" title="Remove" onclick="this.closest('.ex-item').remove()">×</button>
+  </div>`
+}
+function exAddItem() { document.getElementById('exf-items')?.insertAdjacentHTML('beforeend', exItemRow()) }
+function exGetItems() {
+  return Array.from(document.querySelectorAll('#exf-items .ex-item')).map(row => ({
+    sku:  row.querySelector('.exi-sku').value.trim(),
+    qty:  row.querySelector('.exi-qty').value === '' ? null : Number(row.querySelector('.exi-qty').value),
+    note: row.querySelector('.exi-note').value.trim() || null,
+  })).filter(i => i.sku)
+}
+
 function exShow(id) {
-  if (exSel === id) { exClose(); return }
-  const r = exRows.find(x => x.id === id); if (!r) return
+  if (exSel === id && id !== 'new') { exClose(); return }
+  const isNew = id === 'new'
+  if (isNew && !isAdmin) return
+  const r = isNew ? { type: exTab, status: 'Pending', channel: '', items: [] } : exRows.find(x => x.id === id)
+  if (!r) return
   exSel = id
+  const rts   = r.type === 'RTS'
   const items = Array.isArray(r.items) ? r.items : []
-  const itemsHtml = items.length
-    ? `<table class="sp-tbl"><thead><tr><th>SKU</th><th>Qty</th><th>Note</th></tr></thead><tbody>${items.map(i =>
-        `<tr><td>${esc(i.sku)}</td><td>${esc(i.qty ?? '')}</td><td>${esc(i.note || '—')}</td></tr>`).join('')}</tbody></table>`
-    : '<span class="ex-dash">No items listed</span>'
-  const fld = (k, v, full) => `<div class="sp-field"${full ? ' style="grid-column:1/-1"' : ''}><span class="dl">${k}</span><span class="dv" style="word-break:break-all">${esc(v || '—')}</span></div>`
-  const stamp = r.source === 'sheet_import'
-    ? `Imported from the sheet (row ${r.sheet_row})`
-    : `Created ${fmt(r.created_at)}${r.created_by ? ' by ' + esc(r.created_by) : ''}`
+  const ro    = v => `<div class="ex-ro">${v ? esc(v) : '<span class="ex-dash">—</span>'}</div>`
+  const inp   = (fid, v, ph) => `<input type="text" id="${fid}" value="${esc(v ?? '')}" placeholder="${ph}">`
+  const ta    = (fid, v, ph, rows = 3) => `<textarea id="${fid}" rows="${rows}" placeholder="${ph}">${esc(v ?? '')}</textarea>`
+  const field = (label, html) => `<div class="form-field"><label>${label}</label>${html}</div>`
+
+  // Package details — GG edits, client reads
+  const details = isAdmin ? `
+      ${field('Tracking # (paste long or short)', inp('exf-track', r.tracking_raw ?? r.tracking, 'Scan or paste tracking') + '<div class="ex-hint" id="exf-track-hint"></div>')}
+      ${rts ? field('Channel', `<select id="exf-chan"><option value="">— Select —</option><option ${r.channel==='Ecom'?'selected':''}>Ecom</option><option ${r.channel==='Wholesale'?'selected':''}>Wholesale</option></select>`) : ''}
+      ${field('Order # / PO', inp('exf-order', r.order_ref, 'e.g. ORDER#362249 / NA0008-0446191001'))}
+      ${field('Customer', inp('exf-cust', r.customer_name, 'Customer name'))}
+      ${rts ? '' : field('RA #', inp('exf-ra', r.ra_num, 'RA # if on the label'))}`
+    : `<div class="sp-grid" style="grid-template-columns:1fr 1fr">
+        <div class="sp-field" style="grid-column:1/-1"><span class="dl">Tracking as entered</span><span class="dv" style="word-break:break-all">${esc(r.tracking_raw || '—')}</span></div>
+        <div class="sp-field" style="grid-column:1/-1"><span class="dl">Order / PO</span><span class="dv">${esc(r.order_ref || '—')}</span></div>
+        <div class="sp-field"><span class="dl">Customer</span><span class="dv">${esc(r.customer_name || '—')}</span></div>
+        ${rts ? '' : `<div class="sp-field"><span class="dl">RA #</span><span class="dv">${esc(r.ra_num || '—')}</span></div>`}
+      </div>`
+
+  // Items — unknown packages only
+  let itemsHtml = ''
+  if (!rts) {
+    itemsHtml = isAdmin
+      ? `<div id="exf-items">${(items.length ? items : [{}]).map(exItemRow).join('')}</div>
+         <button type="button" class="btn btn-sm" onclick="exAddItem()">+ Add item</button>`
+      : (items.length
+          ? `<table class="sp-tbl"><thead><tr><th>SKU</th><th>Qty</th><th>Note</th></tr></thead><tbody>${items.map(i =>
+              `<tr><td>${esc(i.sku)}</td><td>${esc(i.qty ?? '')}</td><td>${esc(i.note || '—')}</td></tr>`).join('')}</tbody></table>`
+          : '<span class="ex-dash">No items listed</span>')
+  }
+
+  // Status — GG sets any status; client marks Client Done
+  const statusHtml = isAdmin
+    ? field('Status', `<select id="exf-status">${['Pending','GG Done','Client Done'].map(s => `<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select>`)
+    : `<label class="checkbox-row"><input type="checkbox" id="exf-cdone" ${r.status==='Client Done'?'checked':''}> Mark as Client Done</label>`
+
+  const stamp = isNew ? '' : (r.updated_by && r.updated_by !== 'sheet_import'
+    ? `Last updated ${fmt(r.updated_at)} by ${esc(r.updated_by)}`
+    : (r.source === 'sheet_import' ? `Imported from the sheet (row ${r.sheet_row})` : `Created ${fmt(r.created_at)}${r.created_by ? ' by ' + esc(r.created_by) : ''}`))
+
   document.getElementById('ex-card').innerHTML = `
     <div class="sp-hdr">
       <div>
-        <div class="sp-title" style="word-break:break-all">${esc(r.tracking || '—')}</div>
-        <div class="sp-sub" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">${exStatusBadge(r.status)} ${r.type === 'RTS' ? exChanBadge(r.channel) : ''} <span>${r.type === 'RTS' ? 'Return to sender' : 'Unknown package'}</span></div>
+        <div class="sp-title" style="word-break:break-all">${isNew ? (rts ? 'New return to sender' : 'New unknown package') : esc(r.tracking || '—')}</div>
+        <div class="sp-sub" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">${isNew ? '' : exStatusBadge(r.status)} ${rts && !isNew ? exChanBadge(r.channel) : ''} <span>${rts ? 'Return to sender' : 'Unknown package'}</span></div>
       </div>
       <button class="sp-x" onclick="exClose()">×</button>
     </div>
-    <div class="sp-section"><div class="sp-grid" style="grid-template-columns:1fr 1fr">
-      ${fld('Tracking as entered', r.tracking_raw, true)}
-      ${fld('Order / PO', r.order_ref, true)}
-      ${fld('Customer', r.customer_name)}
-      ${fld('RA #', r.ra_num)}
-    </div></div>
-    ${r.type === 'UNKNOWN' ? `<div class="sp-section"><div class="sp-label">Items in the package</div>${itemsHtml}</div>` : ''}
-    <div class="sp-section"><div class="sp-label">Client notes</div><div class="ex-body">${esc(r.client_notes || '—')}</div></div>
-    <div class="sp-section"><div class="sp-label">GG notes</div><div class="ex-body">${esc(r.gg_notes || '—')}</div></div>
-    <div class="sp-section"><div class="sp-label">Resolution</div><div class="ex-body">${esc(r.resolution || '—')}</div></div>
-    <div style="padding:10px 16px;font-size:10px;color:var(--text3)">${stamp}</div>`
+    <div class="ex-form">
+      <div class="sp-section"><div class="sp-label">Package</div>${details}</div>
+      ${rts ? '' : `<div class="sp-section"><div class="sp-label">Items in the package</div>${itemsHtml}</div>`}
+      <div class="sp-section">
+        <div class="sp-label">Notes &amp; resolution</div>
+        ${field('Client notes', isAdmin ? ro(r.client_notes) : ta('exf-cnotes', r.client_notes, 'Instructions for GG — reship address, return to stock, RMA created…', 4))}
+        ${field('GG notes', isAdmin ? ta('exf-gnotes', r.gg_notes, 'Internal GG notes…', 2) : ro(r.gg_notes))}
+        ${field('Resolution', isAdmin ? ta('exf-res', r.resolution, 'New tracking, Transact#, Ref#…-RTS-GG, RMA closed…', 2) : ro(r.resolution))}
+        ${statusHtml}
+      </div>
+    </div>
+    <div class="sp-actions" style="padding:12px 16px">
+      <button class="btn btn-accent btn-sm" id="exf-save" onclick="exSave()">${isNew ? 'Create' : 'Save'}</button>
+      <button class="btn btn-sm" onclick="exClose()">Cancel</button>
+      <span style="font-size:10px;color:var(--text3);margin-left:auto;align-self:center">${stamp}</span>
+    </div>`
   document.getElementById('ex-panel').classList.add('open')
+  const tr = document.getElementById('exf-track')
+  if (tr) { tr.addEventListener('input', exTrackPreview); exTrackPreview(); if (isNew) tr.focus() }
   exRender()
+}
+
+async function exSave() {
+  const isNew = exSel === 'new'
+  const cur   = isNew ? { type: exTab, status: 'Pending' } : exRows.find(x => x.id === exSel)
+  if (!cur) return
+  const rts   = cur.type === 'RTS'
+  const val   = id => (document.getElementById(id)?.value ?? '').trim()
+  const now   = new Date().toISOString(), who = currentUser?.email ?? ''
+  let patch
+
+  if (isAdmin) {
+    const raw = val('exf-track')
+    if (!raw) { toast('Tracking # is required', 'warn'); return }
+    if (rts && !val('exf-chan')) { toast('Pick Ecom or Wholesale', 'warn'); return }
+    const short = exShortTracking(raw)
+    const dup = exRows.find(x => x.id !== cur.id && x.type === cur.type && x.tracking === short)
+    if (dup && !confirm(`Tracking ${short} is already logged (${dup.status}). Save anyway?`)) return
+    patch = {
+      tracking_raw:  raw,
+      tracking:      short,
+      channel:       rts ? val('exf-chan') : null,
+      order_ref:     val('exf-order') || null,
+      customer_name: val('exf-cust') || null,
+      ra_num:        rts ? null : (val('exf-ra') || null),
+      items:         rts ? [] : exGetItems(),
+      gg_notes:      val('exf-gnotes') || null,
+      resolution:    val('exf-res') || null,
+      status:        val('exf-status') || 'Pending',
+    }
+  } else {
+    const done = document.getElementById('exf-cdone')?.checked
+    let status = cur.status
+    if (done) status = 'Client Done'
+    else if (cur.status === 'Client Done') status = cur.resolution ? 'GG Done' : 'Pending'
+    patch = { client_notes: val('exf-cnotes') || null, status }
+  }
+  patch.updated_at = now; patch.updated_by = who
+
+  const btn = document.getElementById('exf-save')
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…' }
+  try {
+    let res
+    if (isNew) res = await sb.from('receipt_exceptions')
+        .insert({ ...patch, type: cur.type, source: 'portal', created_by: who }).select().single()
+    else res = await sb.from('receipt_exceptions').update(patch).eq('id', cur.id).select().single()
+    if (res.error) throw res.error
+    const saved = res.data
+    const i = exRows.findIndex(x => x.id === saved.id)
+    if (i > -1) exRows[i] = saved; else exRows.unshift(saved)
+    exRows.sort((a, b) => (EX_ORDER[a.status] ?? 9) - (EX_ORDER[b.status] ?? 9) ||
+      new Date(b.created_at) - new Date(a.created_at) || (b.sheet_row ?? 0) - (a.sheet_row ?? 0))
+    exCounts()
+    toast(isNew ? 'Entry created' : 'Saved')
+    exClose()
+  } catch (e) {
+    toast('Could not save: ' + (e.message || e), 'err')
+    if (btn) { btn.disabled = false; btn.textContent = isNew ? 'Create' : 'Save' }
+  }
 }
 
 function exClose() {
