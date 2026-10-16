@@ -330,6 +330,9 @@ input::placeholder,textarea::placeholder{color:var(--text3)}
 .ex-item input:focus{outline:none;border-color:var(--accent)}
 .ex-x{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;line-height:1}
 .ex-ro{font-size:12px;color:var(--text);white-space:pre-wrap;min-height:16px}
+.ex-trk{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)}
+.ex-trk:hover{border-bottom-style:solid}
+.ex-carrier{font-size:9px;font-family:var(--mono);color:var(--text3);margin-left:4px;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -1861,6 +1864,7 @@ function exFiltered() {
   return exRows.filter(r => {
     if (r.type !== exTab) return false
     if (exStatus && r.status !== exStatus) return false
+    if (!exStatus && !q && r.status === 'Client Done') return false   // archived: hidden by default, searchable
     if (ch && exTab === 'RTS' && r.channel !== ch) return false
     if (q) {
       const items = (Array.isArray(r.items) ? r.items : []).map(i => i.sku).join(' ')
@@ -1881,8 +1885,8 @@ function exRender() {
 
   const all = exRows.filter(r => r.type === exTab)
   const n = s => all.filter(r => r.status === s).length
-  const cards = [['', 'Total', all.length, 'c-blue'], ['Pending', 'Pending', n('Pending'), 'c-amber'],
-                 ['GG Done', 'GG done · awaiting client', n('GG Done'), 'c-purple'], ['Client Done', 'Client done', n('Client Done'), 'c-green']]
+  const cards = [['', 'Open', n('Pending') + n('GG Done'), 'c-blue'], ['Pending', 'Pending', n('Pending'), 'c-amber'],
+                 ['GG Done', 'GG done · awaiting client', n('GG Done'), 'c-purple'], ['Client Done', 'Archived · client done', n('Client Done'), 'c-green']]
   document.getElementById('ex-metrics').innerHTML = cards.map(([k, l, v, c]) =>
     `<button class="ex-metric${exStatus === k ? ' on' : ''}" onclick="exStatus='${k}';exRender()"><div class="metric-val ${c}">${v}</div><div class="metric-lbl">${l}</div></button>`).join('')
 
@@ -1892,7 +1896,7 @@ function exRender() {
 
   const list = exFiltered()
   const tb = document.getElementById('ex-tbody')
-  if (!list.length) { tb.innerHTML = `<tr class="empty"><td colspan="8">${exLoaded ? 'No entries match these filters' : 'Loading…'}</td></tr>`; return }
+  if (!list.length) { tb.innerHTML = `<tr class="empty"><td colspan="8">${exLoaded ? (exStatus === '' && !(document.getElementById('ex-q')?.value ?? '').trim() ? 'Nothing open — completed entries are in Archived' : 'No entries match these filters') : 'Loading…'}</td></tr>`; return }
   tb.innerHTML = list.map(r => {
     const items = (Array.isArray(r.items) ? r.items : []).map(i => i.sku + (i.qty > 1 ? ` ×${i.qty}` : '')).join(', ')
     const ora = [r.order_ref, r.ra_num ? `RA ${r.ra_num}` : null].filter(Boolean).join(' · ')
@@ -1900,7 +1904,7 @@ function exRender() {
     return `<tr class="${exSel === r.id ? 'row-active' : ''}" onclick="exShow(${r.id})">
       <td>${exStatusBadge(r.status)}</td>
       ${rts ? `<td>${exChanBadge(r.channel)}</td>` : ''}
-      <td class="mc">${esc(r.tracking || '—')}${longNote}</td>
+      <td class="mc">${exTrackLink(r.tracking)}${longNote}</td>
       ${rts ? `<td>${exCell(r.order_ref, true)}</td><td>${exCell(r.customer_name)}</td>`
             : `<td>${exCell(r.customer_name)}</td><td>${exCell(ora, true)}</td><td>${exCell(items, true)}</td>`}
       <td>${exCell(r.client_notes)}</td>
@@ -1908,6 +1912,25 @@ function exRender() {
       <td>${exCell(r.resolution, true)}</td>
     </tr>`
   }).join('')
+}
+
+// Carrier tracking links — public carrier pages, no API, no cost.
+function exCarrierUrl(t) {
+  const n = String(t ?? '').replace(/\s+/g, '').toUpperCase()
+  if (!n) return null
+  if (/^1Z[0-9A-Z]{16}$/.test(n))            return ['UPS',   `https://www.ups.com/track?loc=en_US&tracknum=${n}`]
+  if (/^96\d{20,32}$/.test(n) || /^\d{12}$/.test(n) || /^\d{15}$/.test(n))
+                                              return ['FedEx', `https://www.fedex.com/fedextrack/?trknbr=${n}`]
+  if (/^9[1-5]\d{18,32}$/.test(n) || /^[A-Z]{2}\d{9}US$/.test(n))
+                                              return ['USPS',  `https://tools.usps.com/go/TrackConfirmAction?tLabels=${n}`]
+  if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(n))     return ['Intl',  `https://t.17track.net/en#nums=${n}`]
+  return null
+}
+function exTrackLink(t) {
+  if (!t) return '—'
+  const c = exCarrierUrl(t)
+  if (!c) return esc(t)
+  return `<a class="ex-trk" href="${c[1]}" target="_blank" rel="noopener" title="Track on ${c[0]}" onclick="event.stopPropagation()">${esc(t)}</a><span class="ex-carrier">${c[0]}</span>`
 }
 
 // USPS IMpb: strip "420"+ZIP5 (30 digits) or "420"+ZIP+4 (34 digits) → 22-digit tracking.
@@ -1995,7 +2018,7 @@ function exShow(id) {
   document.getElementById('ex-card').innerHTML = `
     <div class="sp-hdr">
       <div>
-        <div class="sp-title" style="word-break:break-all">${isNew ? (rts ? 'New return to sender' : 'New unknown package') : esc(r.tracking || '—')}</div>
+        <div class="sp-title" style="word-break:break-all">${isNew ? (rts ? 'New return to sender' : 'New unknown package') : exTrackLink(r.tracking)}</div>
         <div class="sp-sub" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">${isNew ? '' : exStatusBadge(r.status)} ${rts && !isNew ? exChanBadge(r.channel) : ''} <span>${rts ? 'Return to sender' : 'Unknown package'}</span></div>
       </div>
       <button class="sp-x" onclick="exClose()">×</button>
@@ -2073,7 +2096,7 @@ async function exSave() {
     exRows.sort((a, b) => (EX_ORDER[a.status] ?? 9) - (EX_ORDER[b.status] ?? 9) ||
       new Date(b.created_at) - new Date(a.created_at) || (b.sheet_row ?? 0) - (a.sheet_row ?? 0))
     exCounts()
-    toast(isNew ? 'Entry created' : 'Saved')
+    toast(isNew ? 'Entry created' : (saved.status === 'Client Done' ? 'Saved — moved to Archived' : 'Saved'))
     exClose()
   } catch (e) {
     toast('Could not save: ' + (e.message || e), 'err')
