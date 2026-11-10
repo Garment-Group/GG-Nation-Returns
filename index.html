@@ -1119,6 +1119,12 @@ function filtered() {
   return result
 }
 
+function discBadge(type) {
+  if (!type) return `<span style="color:var(--text3);font-size:11px">—</span>`
+  const map = {'Damaged':'b-damaged','Extra item':'b-extra','Missing item':'b-missing','Wrong item':'b-wrong'}
+  return `<span class="badge ${map[type]??'b-open'}">${type}</span>`
+}
+
 function statusBadge(s, closedInExtensiv=false) {
   const map = {'Open':'b-open','Flagged':'b-flagged','Notified':'b-notified','Resolved':'b-ok'}
   const wms = `<span class="badge" style="background:#F3F4F6;color:#6B7280;border:1px solid #D1D5DB;font-size:10px;margin-left:3px" title="Closed/complete in Extensiv">Closed in WMS</span>`
