@@ -1119,19 +1119,13 @@ function filtered() {
   return result
 }
 
-function discBadge(type) {
-  if (!type) return `<span style="color:var(--text3);font-size:11px">—</span>`
-  const map = {'Damaged':'b-damaged','Extra item':'b-extra','Missing item':'b-missing','Wrong item':'b-wrong'}
-  return `<span class="badge ${map[type]??'b-open'}">${type}</span>`
-}
-
 function statusBadge(s, closedInExtensiv=false) {
   const map = {'Open':'b-open','Flagged':'b-flagged','Notified':'b-notified','Resolved':'b-ok'}
+  const wms = `<span class="badge" style="background:#F3F4F6;color:#6B7280;border:1px solid #D1D5DB;font-size:10px;margin-left:3px" title="Closed/complete in Extensiv">Closed in WMS</span>`
+  // Closed in WMS with no portal workflow → default 'Open' is meaningless, show WMS state only
+  if (closedInExtensiv && s === 'Open') return wms.replace('margin-left:3px', 'margin-left:0')
   const badge = `<span class="badge ${map[s]??'b-open'}">${s}</span>`
-  if (closedInExtensiv) {
-    return badge + `<span class="badge" style="background:#F3F4F6;color:#6B7280;border:1px solid #D1D5DB;font-size:10px;margin-left:3px">Closed in WMS</span>`
-  }
-  return badge
+  return closedInExtensiv ? badge + wms : badge
 }
 
 function render() {
@@ -1377,7 +1371,8 @@ async function showDrawer(idx) {
       <div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
           <div class="sp-title">${ru.referenceNum}</div>
-          <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;${
+          ${ru._closedInExtensiv && getStatus(ru) === 'Open' ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:#F3F4F6;color:#6B7280">Closed in WMS</span>` : ''}
+          <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;${ru._closedInExtensiv && getStatus(ru) === 'Open' ? 'display:none;' : ''}${
             getStatus(ru)==='Notified'?'background:#FEF3C7;color:#D97706':
             getStatus(ru)==='Flagged'?'background:#FEE2E2;color:#DC2626':
             getStatus(ru)==='Resolved'?'background:#DCFCE7;color:#16A34A':
